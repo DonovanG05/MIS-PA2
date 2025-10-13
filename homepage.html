@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Freelance Music - Connect Teachers & Students</title>
+
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous"
+    />
+
+    <!-- Bootstrap Icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+      integrity="sha384-4LISF5TTJXyL+8FfaTKAHPfp/BcWp8xWwMivssIY3dXyf/TojXnnMf9Ktg0PtM2b1"
+      crossorigin="anonymous"
+    />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="./styles/main.css" />
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary py-4">
+      <div class="container">
+        <a class="navbar-brand fw-bold fs-3" href="#">
+          <span style="font-size: 1.2em;">🎵</span> Freelance Music
+        </a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto align-items-center">
+            <li class="nav-item">
+              <a class="nav-link fs-5 px-3" href="#features">Features</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link fs-5 px-3" href="#how-it-works">How It Works</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link fs-5 px-3" href="#contact">Contact</a>
+            </li>
+            <li class="nav-item ms-3">
+              <button
+                class="btn btn-outline-light btn-sm px-3"
+                data-bs-toggle="modal"
+                data-bs-target="#teacherSignupModal"
+              >
+                <i class="bi bi-person-check me-1"></i>Teach
+              </button>
+            </li>
+            <li class="nav-item ms-2">
+              <button
+                class="btn btn-warning btn-sm px-3 fw-bold"
+                data-bs-toggle="modal"
+                data-bs-target="#studentSignupModal"
+              >
+                <i class="bi bi-person-plus me-1"></i>Learn
+              </button>
+            </li>
+            <li class="nav-item ms-2">
+              <button
+                class="btn btn-light btn-sm px-3"
+                onclick="showSignInModal()"
+              >
+                <i class="bi bi-box-arrow-in-right me-1"></i>Sign In
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Features Section -->
+    <section id="features" class="py-5">
+      <div class="container">
+        <div class="row text-center mb-5">
+          <div class="col-12">
+            <h2 class="display-5 fw-bold mb-3">Why Choose Freelance Music?</h2>
+            <p class="lead text-muted">
+              Built for musicians, by musicians
+            </p>
+          </div>
+        </div>
+        <div class="row g-4">
+          <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm">
+              <div class="card-body text-center p-4">
+                <div class="feature-icon bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3">
+                  <span style="font-size: 2rem;">📅</span>
+                </div>
+                <h5 class="card-title">Flexible Scheduling</h5>
+                <p class="card-text text-muted">
+                  Book lessons that fit your schedule. Choose from available time slots 
+                  that work for both teachers and students.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm">
+              <div class="card-body text-center p-4">
+                <div class="feature-icon bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3">
+                  <span style="font-size: 2rem;">💻</span>
+                </div>
+                <h5 class="card-title">In-Person or Virtual</h5>
+                <p class="card-text text-muted">
+                  Learn from home or in-person. Teachers can offer both options 
+                  to reach more students worldwide.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm">
+              <div class="card-body text-center p-4">
+                <div class="feature-icon bg-warning text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3">
+                  <span style="font-size: 2rem;">🎵</span>
+                </div>
+                <h5 class="card-title">All Instruments</h5>
+                <p class="card-text text-muted">
+                  From piano to violin, guitar to drums. Find teachers for any 
+                  instrument or musical style you want to learn.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Call to Action Section -->
+    <section class="py-5 bg-primary text-white">
+      <div class="container text-center">
+        <div class="row justify-content-center">
+          <div class="col-lg-8">
+            <h2 class="display-5 fw-bold mb-4">Ready to Start Your Musical Journey?</h2>
+            <p class="lead mb-4">
+              Join thousands of music teachers and students who are already using Freelance Music 
+              to connect, learn, and grow together.
+            </p>
+            <div class="d-flex gap-3 justify-content-center flex-wrap">
+              <button
+                class="btn btn-light btn-lg px-5"
+                data-bs-toggle="modal"
+                data-bs-target="#teacherSignupModal"
+              >
+                <i class="bi bi-person-check me-2"></i>Start Teaching
+              </button>
+              <button
+                class="btn btn-outline-light btn-lg px-5"
+                data-bs-toggle="modal"
+                data-bs-target="#studentSignupModal"
+              >
+                <i class="bi bi-person-plus me-2"></i>Start Learning
+              </button>
+            </div>
+            <p class="mt-3 mb-0">
+              <small>Free to join • Secure payments • 24/7 support</small>
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="py-5 bg-light">
+      <div class="container">
+        <div class="row text-center mb-5">
+          <div class="col-12">
+            <h2 class="display-5 fw-bold mb-3">How It Works</h2>
+            <p class="lead text-muted">
+              Get started in minutes
+            </p>
+          </div>
+        </div>
+        <div class="row g-4">
+          <div class="col-md-4 text-center">
+            <div class="step-number bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3">
+              <span class="fw-bold fs-4">1</span>
+            </div>
+            <h5>Sign Up</h5>
+            <p class="text-muted">
+              Create your account as a teacher or student. 
+              Set up your profile with your preferences.
+            </p>
+          </div>
+          <div class="col-md-4 text-center">
+            <div class="step-number bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3">
+              <span class="fw-bold fs-4">2</span>
+            </div>
+            <h5>Find Your Match</h5>
+            <p class="text-muted">
+              Browse teachers or students based on instrument, 
+              schedule, and location preferences.
+            </p>
+          </div>
+          <div class="col-md-4 text-center">
+            <div class="step-number bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3">
+              <span class="fw-bold fs-4">3</span>
+            </div>
+            <h5>Start Learning</h5>
+            <p class="text-muted">
+              Book your first lesson and begin your musical journey. 
+              Secure payments handled automatically.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Teacher Signup Modal -->
+    <div class="modal fade" id="teacherSignupModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title">
+              <i class="bi bi-person-check me-2"></i>Teacher Registration
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <form id="teacherSignupForm">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label for="teacherFirstName" class="form-label">First Name</label>
+                  <input type="text" class="form-control" id="teacherFirstName" required>
+                </div>
+                <div class="col-md-6">
+                  <label for="teacherLastName" class="form-label">Last Name</label>
+                  <input type="text" class="form-control" id="teacherLastName" required>
+                </div>
+                <div class="col-12">
+                  <label for="teacherEmail" class="form-label">Email Address</label>
+                  <input type="email" class="form-control" id="teacherEmail" required>
+                </div>
+                <div class="col-12">
+                  <label for="teacherPhone" class="form-label">Phone Number</label>
+                  <input type="tel" class="form-control" id="teacherPhone" required>
+                </div>
+                <div class="col-md-6">
+                  <label for="teacherInstruments" class="form-label">Instruments You Teach</label>
+                  <select class="form-select" id="teacherInstruments" multiple required>
+                    <option value="piano">Piano</option>
+                    <option value="guitar">Guitar</option>
+                    <option value="violin">Violin</option>
+                    <option value="drums">Drums</option>
+                    <option value="voice">Voice</option>
+                    <option value="bass">Bass</option>
+                    <option value="saxophone">Saxophone</option>
+                    <option value="trumpet">Trumpet</option>
+                    <option value="flute">Flute</option>
+                    <option value="cello">Cello</option>
+                  </select>
+                  <div class="form-text">Hold Ctrl/Cmd to select multiple instruments</div>
+                </div>
+                <div class="col-md-6">
+                  <label for="teacherExperience" class="form-label">Years of Experience</label>
+                  <select class="form-select" id="teacherExperience" required>
+                    <option value="">Select experience level</option>
+                    <option value="0-1">0-1 years</option>
+                    <option value="2-5">2-5 years</option>
+                    <option value="6-10">6-10 years</option>
+                    <option value="10+">10+ years</option>
+                  </select>
+                </div>
+                <div class="col-12">
+                  <label for="teacherLocation" class="form-label">Location (City, State)</label>
+                  <input type="text" class="form-control" id="teacherLocation" required>
+                </div>
+                <div class="col-12">
+                  <label for="teacherPhoto" class="form-label">Profile Photo</label>
+                  <input type="file" class="form-control" id="teacherPhoto" accept="image/*" required>
+                  <div class="form-text">Upload a professional photo of yourself (JPG, PNG, or GIF - Max 5MB)</div>
+                </div>
+                <div class="col-12">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="teacherVirtual" value="virtual">
+                    <label class="form-check-label" for="teacherVirtual">
+                      I can teach virtual lessons
+                    </label>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="teacherInPerson" value="in-person">
+                    <label class="form-check-label" for="teacherInPerson">
+                      I can teach in-person lessons
+                    </label>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <label for="teacherBio" class="form-label">Bio/Teaching Philosophy</label>
+                  <textarea class="form-control" id="teacherBio" rows="3" placeholder="Tell students about your teaching style and experience..."></textarea>
+                </div>
+                <div class="col-12">
+                  <label for="teacherRates" class="form-label">Hourly Rate ($)</label>
+                  <input type="number" class="form-control" id="teacherRates" min="20" max="200" step="5" required>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="submitTeacherSignup()">
+              <i class="bi bi-person-check me-2"></i>Register as Teacher
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Student Signup Modal -->
+    <div class="modal fade" id="studentSignupModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-success text-white">
+            <h5 class="modal-title">
+              <i class="bi bi-person-plus me-2"></i>Student Registration
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <form id="studentSignupForm">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label for="studentFirstName" class="form-label">First Name</label>
+                  <input type="text" class="form-control" id="studentFirstName" required>
+                </div>
+                <div class="col-md-6">
+                  <label for="studentLastName" class="form-label">Last Name</label>
+                  <input type="text" class="form-control" id="studentLastName" required>
+                </div>
+                <div class="col-12">
+                  <label for="studentEmail" class="form-label">Email Address</label>
+                  <input type="email" class="form-control" id="studentEmail" required>
+                </div>
+                <div class="col-12">
+                  <label for="studentPhone" class="form-label">Phone Number</label>
+                  <input type="tel" class="form-control" id="studentPhone" required>
+                </div>
+                <div class="col-md-6">
+                  <label for="studentInstrument" class="form-label">Instrument You Want to Learn</label>
+                  <select class="form-select" id="studentInstrument" required>
+                    <option value="">Select instrument</option>
+                    <option value="piano">Piano</option>
+                    <option value="guitar">Guitar</option>
+                    <option value="violin">Violin</option>
+                    <option value="drums">Drums</option>
+                    <option value="voice">Voice</option>
+                    <option value="bass">Bass</option>
+                    <option value="saxophone">Saxophone</option>
+                    <option value="trumpet">Trumpet</option>
+                    <option value="flute">Flute</option>
+                    <option value="cello">Cello</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label for="studentLevel" class="form-label">Current Skill Level</label>
+                  <select class="form-select" id="studentLevel" required>
+                    <option value="">Select level</option>
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                  </select>
+                </div>
+                <div class="col-12">
+                  <label for="studentLocation" class="form-label">Location (City, State)</label>
+                  <input type="text" class="form-control" id="studentLocation" required>
+                </div>
+                <div class="col-12">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="studentVirtual" value="virtual">
+                    <label class="form-check-label" for="studentVirtual">
+                      I'm interested in virtual lessons
+                    </label>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="studentInPerson" value="in-person">
+                    <label class="form-check-label" for="studentInPerson">
+                      I'm interested in in-person lessons
+                    </label>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <label for="studentGoals" class="form-label">Learning Goals</label>
+                  <textarea class="form-control" id="studentGoals" rows="3" placeholder="What do you hope to achieve with music lessons?"></textarea>
+                </div>
+                <div class="col-md-6">
+                  <label for="studentBudget" class="form-label">Budget Range (per hour)</label>
+                  <select class="form-select" id="studentBudget" required>
+                    <option value="">Select budget range</option>
+                    <option value="20-40">$20-40</option>
+                    <option value="40-60">$40-60</option>
+                    <option value="60-80">$60-80</option>
+                    <option value="80+">$80+</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label for="studentSchedule" class="form-label">Preferred Lesson Frequency</label>
+                  <select class="form-select" id="studentSchedule" required>
+                    <option value="">Select frequency</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="bi-weekly">Bi-weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="as-needed">As needed</option>
+                  </select>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-success" onclick="submitStudentSignup()">
+              <i class="bi bi-person-plus me-2"></i>Register as Student
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sign In Modal -->
+    <div class="modal fade" id="signInModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title">
+              <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <form id="signInForm">
+              <div class="mb-3">
+                <label for="signInEmail" class="form-label">Email Address</label>
+                <input type="email" class="form-control" id="signInEmail" required>
+              </div>
+              <div class="mb-3">
+                <label for="signInPassword" class="form-label">Password</label>
+                <input type="password" class="form-control" id="signInPassword" required>
+              </div>
+              <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="rememberMe">
+                <label class="form-check-label" for="rememberMe">
+                  Remember me
+                </label>
+              </div>
+              <div class="d-grid gap-2">
+                <button type="button" class="btn btn-primary" onclick="submitSignIn()">
+                  <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+                </button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                  Cancel
+                </button>
+              </div>
+            </form>
+            <hr>
+            <div class="text-center">
+              <p class="mb-2">Don't have an account?</p>
+              <div class="d-flex gap-2 justify-content-center">
+                <button
+                  class="btn btn-outline-primary btn-sm"
+                  data-bs-dismiss="modal"
+                  data-bs-toggle="modal"
+                  data-bs-target="#teacherSignupModal"
+                >
+                  <i class="bi bi-person-check me-1"></i>Sign Up as Teacher
+                </button>
+                <button
+                  class="btn btn-outline-success btn-sm"
+                  data-bs-dismiss="modal"
+                  data-bs-toggle="modal"
+                  data-bs-target="#studentSignupModal"
+                >
+                  <i class="bi bi-person-plus me-1"></i>Sign Up as Student
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer id="contact" class="bg-dark text-white py-5">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-6">
+            <h5 class="fw-bold mb-3">
+              <i class="bi bi-music-note-beamed me-2"></i>Freelance Music
+            </h5>
+            <p class="text-light">
+              Connecting music teachers and students worldwide. 
+              Start your musical journey today.
+            </p>
+          </div>
+          <div class="col-md-6">
+            <h6 class="fw-bold mb-3 text-white">Contact Us</h6>
+            <p class="text-light mb-1">
+              <i class="bi bi-envelope me-2"></i>info@freelancemusic.com
+            </p>
+            <p class="text-light mb-1">
+              <i class="bi bi-phone me-2"></i>(555) 123-4567
+            </p>
+            <p class="text-light">
+              <i class="bi bi-geo-alt me-2"></i>123 Music Street, Nashville, TN
+            </p>
+          </div>
+        </div>
+        <hr class="my-4">
+        <div class="row align-items-center">
+          <div class="col-md-6">
+            <p class="text-light mb-0">&copy; 2024 Freelance Music. All rights reserved.</p>
+          </div>
+          <div class="col-md-6 text-md-end">
+            <p class="text-light mb-0">
+              <small>FM takes a 10% commission on all lesson bookings</small>
+            </p>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Bootstrap JS bundle -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+      crossorigin="anonymous"
+    ></script>
+
+    <!-- Custom JS -->
+    <script src="./scripts/main.js"></script>
+  </body>
+</html>

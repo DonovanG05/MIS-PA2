@@ -1,0 +1,212 @@
+/* Freelance Music - Custom Styles */
+
+:root {
+  --fm-primary: #0d6efd;
+  --fm-secondary: #6c757d;
+  --fm-success: #198754;
+  --fm-warning: #ffc107;
+  --fm-danger: #dc3545;
+  --fm-info: #0dcaf0;
+  --fm-light: #f8f9fa;
+  --fm-dark: #212529;
+}
+
+/* Navigation Bar */
+.navbar {
+  background: linear-gradient(135deg, var(--fm-primary) 0%, #0a58ca 100%) !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.navbar-brand {
+  font-size: 1.8rem !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.navbar-nav .nav-link {
+  font-weight: 500;
+  transition: all 0.3s ease;
+  border-radius: 6px;
+  margin: 0 2px;
+}
+
+.navbar-nav .nav-link:hover {
+  background-color: rgba(255,255,255,0.1);
+  transform: translateY(-1px);
+}
+
+.navbar .btn {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+}
+
+.navbar .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.navbar .btn-warning {
+  background: linear-gradient(135deg, #ffc107 0%, #ffca2c 100%);
+  border: none;
+  color: #000;
+}
+
+.navbar .btn-warning:hover {
+  background: linear-gradient(135deg, #ffca2c 0%, #ffc107 100%);
+  color: #000;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+/* Feature Icons */
+.feature-icon {
+  width: 80px;
+  height: 80px;
+  font-size: 2rem;
+}
+
+.feature-icon i {
+  line-height: 1;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Step Numbers */
+.step-number {
+  width: 60px;
+  height: 60px;
+  font-size: 1.5rem;
+}
+
+/* Custom Button Styles */
+.btn {
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Card Hover Effects */
+.card {
+  transition: all 0.3s ease;
+  border-radius: 12px;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+/* Modal Customization */
+.modal-content {
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.modal-header {
+  border-radius: 12px 12px 0 0;
+}
+
+/* Form Styling */
+.form-control, .form-select {
+  border-radius: 8px;
+  border: 2px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: var(--fm-primary);
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Navigation */
+.navbar-brand {
+  font-size: 1.5rem;
+}
+
+.navbar-nav .nav-link {
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.navbar-nav .nav-link:hover {
+  color: var(--fm-warning) !important;
+}
+
+/* Footer */
+footer {
+  background: linear-gradient(135deg, #212529 0%, #343a40 100%);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .music-banner {
+    text-align: center;
+  }
+  
+  .display-4 {
+    font-size: 2.5rem;
+  }
+  
+  .feature-icon {
+    width: 60px;
+    height: 60px;
+    font-size: 1.5rem;
+  }
+  
+  .step-number {
+    width: 50px;
+    height: 50px;
+    font-size: 1.25rem;
+  }
+}
+
+/* Loading Animation */
+.loading {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid var(--fm-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Success/Error Messages */
+.alert {
+  border-radius: 8px;
+  border: none;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--fm-primary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #0a58ca;
+}
