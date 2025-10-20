@@ -9,7 +9,8 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' })); // Increase payload limit for large images
+app.use(express.urlencoded({ limit: '50mb', extended: true })); // For form data
 app.use(express.static('.'));
 
 // Initialize database
@@ -253,13 +254,51 @@ app.get('/api/teacher/:id/lessons', async (req, res) => {
   }
 });
 
+// Get teacher profile
+app.get('/api/teacher/:id/profile', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const teacher = await db.getTeacherByUserId(parseInt(id));
+    
+    if (teacher) {
+      res.json({
+        success: true,
+        data: teacher
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: 'Teacher not found'
+      });
+    }
+  } catch (error) {
+    console.error('Get teacher profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get teacher profile',
+      error: error.message
+    });
+  }
+});
+
 // Update teacher profile
 app.put('/api/teacher/:id/profile', async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
     
-    const result = await db.updateTeacher(parseInt(id), updateData);
+    // First get the teacher to find the teacher table ID
+    const teacher = await db.getTeacherByUserId(parseInt(id));
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: 'Teacher not found'
+      });
+    }
+    
+    // Update both user and teacher tables
+    const result = await db.updateTeacher(teacher.id, updateData);
     
     res.json({
       success: true,
@@ -347,6 +386,60 @@ app.get('/api/admin/stats', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to get admin statistics',
+      error: error.message
+    });
+  }
+});
+
+// Get all users for admin
+app.get('/api/admin/users', async (req, res) => {
+  try {
+    const users = await db.getAllUsers();
+    res.json({
+      success: true,
+      users
+    });
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get users',
+      error: error.message
+    });
+  }
+});
+
+// Get all lessons for admin
+app.get('/api/admin/lessons', async (req, res) => {
+  try {
+    const lessons = await db.getAllLessons();
+    res.json({
+      success: true,
+      lessons
+    });
+  } catch (error) {
+    console.error('Get lessons error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get lessons',
+      error: error.message
+    });
+  }
+});
+
+// Get dashboard data for admin
+app.get('/api/admin/dashboard', async (req, res) => {
+  try {
+    const dashboardData = await db.getAdminDashboardData();
+    res.json({
+      success: true,
+      data: dashboardData
+    });
+  } catch (error) {
+    console.error('Get admin dashboard error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get dashboard data',
       error: error.message
     });
   }

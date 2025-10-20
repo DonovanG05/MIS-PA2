@@ -4,102 +4,88 @@
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 let charts = {};
-
-// Sample data (will be replaced with database data)
-const sampleData = {
-  revenue: {
-    Q1: 15000,
-    Q2: 22000,
-    Q3: 18000,
-    Q4: 25000
-  },
-  referrals: {
-    'Social Media': 35,
-    'Google Search': 25,
-    'Word of Mouth': 20,
-    'Online Ads': 15,
-    'Other': 5
-  },
-  popularInstruments: {
-    'Piano': 45,
-    'Guitar': 30,
-    'Violin': 15,
-    'Drums': 10
-  },
-  revenueByInstrument: {
-    'Piano': 40,
-    'Guitar': 25,
-    'Violin': 20,
-    'Drums': 15
-  },
-  revenueByStudent: {
-    'John Smith': 15,
-    'Sarah Johnson': 12,
-    'Mike Davis': 10,
-    'Lisa Wilson': 8,
-    'Others': 55
-  },
-  bookings: [
-    {
-      date: '2024-01-15',
-      time: '10:00 AM',
-      teacher: 'Jane Doe',
-      student: 'John Smith',
-      instrument: 'Piano',
-      type: 'Virtual',
-      duration: '60 min',
-      status: 'Confirmed',
-      revenue: 75
-    },
-    {
-      date: '2024-01-16',
-      time: '2:00 PM',
-      teacher: 'Bob Wilson',
-      student: 'Sarah Johnson',
-      instrument: 'Guitar',
-      type: 'In-Person',
-      duration: '45 min',
-      status: 'Confirmed',
-      revenue: 60
-    }
-  ],
-  users: {
-    total: 150,
-    teachers: 25,
-    students: 125,
-    repeatStudents: 45,
-    activeThisMonth: 80
-  }
-};
+let dashboardData = null;
 
 // Initialize dashboard
 document.addEventListener('DOMContentLoaded', function() {
-  initializeDashboard();
-  initializeCharts();
-  generateCalendar();
-  updateUserStats();
+  console.log('Admin portal loaded, starting data fetch...');
+  loadDashboardData();
 });
 
+// Load dashboard data from API
+async function loadDashboardData() {
+  try {
+    console.log('Fetching dashboard data from API...');
+    const response = await fetch('/api/admin/dashboard');
+    console.log('Response status:', response.status);
+    
+    const result = await response.json();
+    console.log('API response:', result);
+    
+    if (result.success) {
+      dashboardData = result.data;
+      console.log('Dashboard data loaded:', dashboardData);
+      initializeDashboard();
+      initializeCharts();
+      generateCalendar();
+      updateUserStats();
+      loadBookingsTable();
+    } else {
+      console.error('Failed to load dashboard data:', result.message);
+      showAlert('Failed to load dashboard data', 'danger');
+    }
+  } catch (error) {
+    console.error('Error loading dashboard data:', error);
+    showAlert('Error loading dashboard data', 'danger');
+  }
+}
+
 function initializeDashboard() {
-  // Update dashboard stats
-  document.getElementById('totalUsers').textContent = sampleData.users.total;
-  document.getElementById('totalBookings').textContent = sampleData.bookings.length;
-  document.getElementById('repeatStudents').textContent = sampleData.users.repeatStudents;
+  if (!dashboardData) {
+    console.log('No dashboard data available');
+    return;
+  }
   
-  const totalRevenue = Object.values(sampleData.revenue).reduce((sum, val) => sum + val, 0);
+  console.log('Initializing dashboard with data:', dashboardData);
+  
+  // Update dashboard stats
+  const totalUsers = dashboardData.users.total_users || 0;
+  const totalBookings = dashboardData.lessons.total_lessons || 0;
+  const repeatStudents = dashboardData.repeatStudents || 0;
+  const totalRevenue = dashboardData.revenue.total_revenue || 0;
+  
+  console.log('Updating stats:', { totalUsers, totalBookings, repeatStudents, totalRevenue });
+  
+  document.getElementById('totalUsers').textContent = totalUsers;
+  document.getElementById('totalBookings').textContent = totalBookings;
+  document.getElementById('repeatStudents').textContent = repeatStudents;
   document.getElementById('totalRevenue').textContent = `$${totalRevenue.toLocaleString()}`;
 }
 
 function initializeCharts() {
+  if (!dashboardData) return;
+  
   // Revenue Bar Chart
   const revenueCtx = document.getElementById('revenueBarChart').getContext('2d');
+  
+  // Process quarterly revenue data
+  const quarterlyData = {};
+  dashboardData.quarterlyRevenue.forEach(q => {
+    quarterlyData[q.quarter] = q.revenue || 0;
+  });
+  
   charts.revenue = new Chart(revenueCtx, {
     type: 'bar',
     data: {
       labels: ['Q1', 'Q2', 'Q3', 'Q4'],
       datasets: [{
         label: 'Revenue ($)',
-        data: Object.values(sampleData.revenue),
+        data: [
+          quarterlyData.Q1 || 0,
+          quarterlyData.Q2 || 0,
+          quarterlyData.Q3 || 0,
+          quarterlyData.Q4 || 0
+        ],
         backgroundColor: 'rgba(13, 110, 253, 0.8)',
         borderColor: 'rgba(13, 110, 253, 1)',
         borderWidth: 1
@@ -120,14 +106,18 @@ function initializeCharts() {
     }
   });
 
-  // Referral Pie Chart
+  // Referral Pie Chart (placeholder - no referral tracking in database yet)
   const referralCtx = document.getElementById('referralChart').getContext('2d');
+  const referralData = {
+    'No Data Available': 100
+  };
+  
   charts.referral = new Chart(referralCtx, {
     type: 'doughnut',
     data: {
-      labels: Object.keys(sampleData.referrals),
+      labels: Object.keys(referralData),
       datasets: [{
-        data: Object.values(sampleData.referrals),
+        data: Object.values(referralData),
         backgroundColor: [
           '#FF6384',
           '#36A2EB',
@@ -149,13 +139,17 @@ function initializeCharts() {
 
   // Popular Instruments Chart
   const popularCtx = document.getElementById('popularInstrumentsReportChart').getContext('2d');
+  
+  const instrumentLabels = dashboardData.popularInstruments.map(inst => inst.instrument);
+  const instrumentData = dashboardData.popularInstruments.map(inst => inst.lesson_count);
+  
   charts.popularInstruments = new Chart(popularCtx, {
     type: 'bar',
     data: {
-      labels: Object.keys(sampleData.popularInstruments),
+      labels: instrumentLabels,
       datasets: [{
         label: 'Lessons Booked',
-        data: Object.values(sampleData.popularInstruments),
+        data: instrumentData,
         backgroundColor: 'rgba(40, 167, 69, 0.8)',
         borderColor: 'rgba(40, 167, 69, 1)',
         borderWidth: 1
@@ -173,38 +167,16 @@ function initializeCharts() {
 
   // Revenue by Instrument Chart
   const revenueInstrumentCtx = document.getElementById('revenueByInstrumentChart').getContext('2d');
+  
+  const revenueInstrumentLabels = dashboardData.popularInstruments.map(inst => inst.instrument);
+  const revenueInstrumentData = dashboardData.popularInstruments.map(inst => inst.revenue);
+  
   charts.revenueByInstrument = new Chart(revenueInstrumentCtx, {
     type: 'pie',
     data: {
-      labels: Object.keys(sampleData.revenueByInstrument),
+      labels: revenueInstrumentLabels,
       datasets: [{
-        data: Object.values(sampleData.revenueByInstrument),
-        backgroundColor: [
-          '#FF6384',
-          '#36A2EB',
-          '#FFCE56',
-          '#4BC0C0'
-        ]
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: {
-          position: 'bottom'
-        }
-      }
-    }
-  });
-
-  // Revenue by Student Chart
-  const revenueStudentCtx = document.getElementById('revenueByStudentChart').getContext('2d');
-  charts.revenueByStudent = new Chart(revenueStudentCtx, {
-    type: 'doughnut',
-    data: {
-      labels: Object.keys(sampleData.revenueByStudent),
-      datasets: [{
-        data: Object.values(sampleData.revenueByStudent),
+        data: revenueInstrumentData,
         backgroundColor: [
           '#FF6384',
           '#36A2EB',
@@ -224,15 +196,15 @@ function initializeCharts() {
     }
   });
 
-  // Users by Type Chart
-  const usersTypeCtx = document.getElementById('usersByTypeChart').getContext('2d');
-  charts.usersByType = new Chart(usersTypeCtx, {
+  // Revenue by Student Chart (placeholder - would need student revenue aggregation)
+  const revenueStudentCtx = document.getElementById('revenueByStudentChart').getContext('2d');
+  charts.revenueByStudent = new Chart(revenueStudentCtx, {
     type: 'doughnut',
     data: {
-      labels: ['Teachers', 'Students'],
+      labels: ['No Data Available'],
       datasets: [{
-        data: [sampleData.users.teachers, sampleData.users.students],
-        backgroundColor: ['#FF6384', '#36A2EB']
+        data: [100],
+        backgroundColor: ['#FF6384']
       }]
     },
     options: {
@@ -245,15 +217,40 @@ function initializeCharts() {
     }
   });
 
-  // User Registration Timeline
+  // Users by Type Chart
+  const usersTypeCtx = document.getElementById('usersByTypeChart').getContext('2d');
+  charts.usersByType = new Chart(usersTypeCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Teachers', 'Students', 'Admins'],
+      datasets: [{
+        data: [
+          dashboardData.users.teachers || 0,
+          dashboardData.users.students || 0,
+          dashboardData.users.admins || 0
+        ],
+        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56']
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'bottom'
+        }
+      }
+    }
+  });
+
+  // User Registration Timeline (placeholder - would need monthly user registration data)
   const registrationCtx = document.getElementById('userRegistrationChart').getContext('2d');
   charts.userRegistration = new Chart(registrationCtx, {
     type: 'line',
     data: {
-      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+      labels: ['No Data Available'],
       datasets: [{
         label: 'New Users',
-        data: [12, 19, 15, 25, 22, 30],
+        data: [0],
         borderColor: 'rgba(13, 110, 253, 1)',
         backgroundColor: 'rgba(13, 110, 253, 0.1)',
         tension: 0.4
@@ -271,6 +268,8 @@ function initializeCharts() {
 }
 
 function generateCalendar() {
+  if (!dashboardData) return;
+  
   const calendarGrid = document.getElementById('calendarGrid');
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'];
@@ -313,7 +312,7 @@ function generateCalendar() {
     
     // Check if this date has lessons
     const dateString = date.toISOString().split('T')[0];
-    const lessonsOnDate = sampleData.bookings.filter(booking => booking.date === dateString);
+    const lessonsOnDate = dashboardData.recentLessons.filter(lesson => lesson.lesson_date === dateString);
     
     if (lessonsOnDate.length > 0) {
       dayElement.classList.add('has-lessons');
@@ -328,16 +327,95 @@ function generateCalendar() {
 }
 
 function updateUserStats() {
-  document.getElementById('usersJoinedCount').textContent = sampleData.users.total;
-  document.getElementById('repeatStudentsCount').textContent = sampleData.users.repeatStudents;
-  document.getElementById('activeUsersCount').textContent = sampleData.users.activeThisMonth;
+  if (!dashboardData) return;
+  
+  document.getElementById('usersJoinedCount').textContent = dashboardData.users.total_users || 0;
+  document.getElementById('repeatStudentsCount').textContent = dashboardData.repeatStudents || 0;
+  document.getElementById('activeUsersCount').textContent = dashboardData.lessons.total_lessons || 0;
+}
+
+// Load bookings table with real data
+function loadBookingsTable() {
+  if (!dashboardData) {
+    console.log('No dashboard data available for bookings table');
+    return;
+  }
+  
+  console.log('Loading bookings table with data:', dashboardData.recentLessons);
+  
+  const tbody = document.querySelector('#bookingsTable tbody');
+  if (!tbody) {
+    console.log('Bookings table tbody not found');
+    return;
+  }
+  
+  tbody.innerHTML = '';
+  
+  if (!dashboardData.recentLessons || dashboardData.recentLessons.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No lessons found</td></tr>';
+    console.log('No recent lessons found in dashboard data');
+    return;
+  }
+  
+  dashboardData.recentLessons.forEach(lesson => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${lesson.lesson_date}</td>
+      <td>${lesson.lesson_time}</td>
+      <td>${lesson.teacher_name}</td>
+      <td>${lesson.student_name}</td>
+      <td>${lesson.instrument}</td>
+      <td>${lesson.lesson_type}</td>
+      <td>${lesson.duration} min</td>
+      <td><span class="badge bg-${lesson.status === 'upcoming' ? 'primary' : lesson.status === 'completed' ? 'success' : 'secondary'}">${lesson.status}</span></td>
+      <td>$${lesson.total_cost}</td>
+    `;
+    tbody.appendChild(row);
+  });
+  
+  console.log(`Loaded ${dashboardData.recentLessons.length} lessons into bookings table`);
+}
+
+// Show alert function
+function showAlert(message, type = 'info') {
+  const alertContainer = document.getElementById('alertContainer') || createAlertContainer();
+  const alertId = 'alert-' + Date.now();
+  
+  const alertHTML = `
+    <div id="${alertId}" class="alert alert-${type} alert-dismissible fade show" role="alert">
+      ${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  `;
+  
+  alertContainer.insertAdjacentHTML('beforeend', alertHTML);
+  
+  // Auto-remove after 5 seconds
+  setTimeout(() => {
+    const alertElement = document.getElementById(alertId);
+    if (alertElement) {
+      alertElement.remove();
+    }
+  }, 5000);
+}
+
+// Create alert container if it doesn't exist
+function createAlertContainer() {
+  const container = document.createElement('div');
+  container.id = 'alertContainer';
+  container.className = 'position-fixed top-0 end-0 p-3';
+  container.style.zIndex = '9999';
+  document.body.appendChild(container);
+  return container;
 }
 
 function exportBookings() {
+  if (!dashboardData) return;
+  
   // Create CSV content
   let csvContent = "Date,Time,Teacher,Student,Instrument,Type,Duration,Status,Revenue\n";
-  sampleData.bookings.forEach(booking => {
-    csvContent += `${booking.date},${booking.time},${booking.teacher},${booking.student},${booking.instrument},${booking.type},${booking.duration},${booking.status},$${booking.revenue}\n`;
+  dashboardData.recentLessons.forEach(lesson => {
+    csvContent += `${lesson.lesson_date},${lesson.lesson_time},${lesson.teacher_name},${lesson.student_name},${lesson.instrument},${lesson.lesson_type},${lesson.duration} min,${lesson.status},$${lesson.total_cost}\n`;
   });
   
   // Download CSV
@@ -374,7 +452,7 @@ function nextMonth() {
   generateCalendar();
 }
 
-function currentMonth() {
+function goToCurrentMonth() {
   const now = new Date();
   currentMonth = now.getMonth();
   currentYear = now.getFullYear();

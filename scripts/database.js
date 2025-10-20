@@ -444,6 +444,126 @@ class Database {
     `;
     return await this.get(sql);
   }
+
+  // Get admin dashboard data
+  async getAdminDashboardData() {
+    try {
+      // Get user counts
+      const userCounts = await this.get(`
+        SELECT 
+          COUNT(*) as total_users,
+          SUM(CASE WHEN user_type = 'teacher' THEN 1 ELSE 0 END) as teachers,
+          SUM(CASE WHEN user_type = 'student' THEN 1 ELSE 0 END) as students,
+          SUM(CASE WHEN user_type = 'admin' THEN 1 ELSE 0 END) as admins
+        FROM users
+      `);
+
+      // Get lesson counts
+      const lessonCounts = await this.get(`
+        SELECT 
+          COUNT(*) as total_lessons,
+          SUM(CASE WHEN status = 'upcoming' THEN 1 ELSE 0 END) as upcoming_lessons,
+          SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_lessons,
+          SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_lessons
+        FROM lessons
+      `);
+
+      // Get revenue data
+      const revenueData = await this.get(`
+        SELECT 
+          COALESCE(SUM(total_cost), 0) as total_revenue,
+          COALESCE(SUM(fm_commission), 0) as total_commission,
+          COALESCE(SUM(teacher_earnings), 0) as total_teacher_earnings
+        FROM lessons
+        WHERE status IN ('upcoming', 'completed')
+      `);
+
+      // Get popular instruments
+      const popularInstruments = await this.all(`
+        SELECT 
+          instrument,
+          COUNT(*) as lesson_count,
+          SUM(total_cost) as revenue
+        FROM lessons
+        WHERE status IN ('upcoming', 'completed')
+        GROUP BY instrument
+        ORDER BY lesson_count DESC
+        LIMIT 5
+      `);
+
+      // Get revenue by quarter (simplified - using current year)
+      const currentYear = new Date().getFullYear();
+      const quarterlyRevenue = await this.all(`
+        SELECT 
+          CASE 
+            WHEN strftime('%m', lesson_date) IN ('01', '02', '03') THEN 'Q1'
+            WHEN strftime('%m', lesson_date) IN ('04', '05', '06') THEN 'Q2'
+            WHEN strftime('%m', lesson_date) IN ('07', '08', '09') THEN 'Q3'
+            WHEN strftime('%m', lesson_date) IN ('10', '11', '12') THEN 'Q4'
+          END as quarter,
+          SUM(total_cost) as revenue
+        FROM lessons
+        WHERE strftime('%Y', lesson_date) = ? AND status IN ('upcoming', 'completed')
+        GROUP BY quarter
+        ORDER BY quarter
+      `, [currentYear.toString()]);
+
+      // Get recent lessons for calendar (all lessons for now since sample data is from 2024)
+      const recentLessons = await this.all(`
+        SELECT 
+          l.*,
+          ut.name as teacher_name,
+          us.name as student_name
+        FROM lessons l
+        JOIN teachers t ON l.teacher_id = t.id
+        JOIN users ut ON t.user_id = ut.id
+        JOIN students s ON l.student_id = s.id
+        JOIN users us ON s.user_id = us.id
+        ORDER BY l.lesson_date, l.lesson_time
+        LIMIT 50
+      `);
+
+      // Get repeat students (students with more than 1 lesson)
+      const repeatStudents = await this.get(`
+        SELECT COUNT(*) as repeat_students
+        FROM (
+          SELECT student_id
+          FROM lessons
+          WHERE status IN ('upcoming', 'completed')
+          GROUP BY student_id
+          HAVING COUNT(*) > 1
+        )
+      `);
+
+      return {
+        users: userCounts,
+        lessons: lessonCounts,
+        revenue: revenueData,
+        popularInstruments,
+        quarterlyRevenue,
+        recentLessons,
+        repeatStudents: repeatStudents.repeat_students
+      };
+    } catch (error) {
+      console.error('Error getting admin dashboard data:', error);
+      throw error;
+    }
+  }
+
+  // Get teacher profile by teacher ID
+  async getTeacherProfile(teacherId) {
+    const sql = `
+      SELECT t.*, u.name, u.email, u.phone, u.location, u.password
+      FROM teachers t 
+      JOIN users u ON t.user_id = u.id 
+      WHERE t.id = ?
+    `;
+    const teacher = await this.get(sql, [teacherId]);
+    if (teacher) {
+      teacher.instruments = JSON.parse(teacher.instruments);
+    }
+    return teacher;
+  }
 }
 
 module.exports = Database;

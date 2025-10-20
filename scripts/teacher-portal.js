@@ -2,13 +2,13 @@
 
 // Global variables
 let teacherProfile = {
-  name: "Jane Smith",
-  email: "jane.smith@email.com",
-  phone: "(555) 123-4567",
-  location: "Nashville, TN",
-  bio: "Experienced piano teacher with 10+ years of teaching. Specializing in classical and contemporary styles.",
-  instruments: ["piano", "voice"],
-  photo: "https://via.placeholder.com/150"
+  name: "",
+  email: "",
+  phone: "",
+  location: "",
+  bio: "",
+  instruments: [],
+  photo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDE1MCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxNTAiIGhlaWdodD0iMTUwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9Ijc1IiBjeT0iNjAiIHI9IjIwIiBmaWxsPSIjOUI5QjlCIi8+CjxwYXRoIGQ9Ik0zMCAxMTBDMzAgMTA1LjU4IDM0LjU4IDEwMSA0MCAxMDFIMTEwQzExNS40MiAxMDEgMTIwIDEwNS41OCAxMjAgMTEwVjExMEgzMFYxMTBaIiBmaWxsPSIjOUI5QjlCIi8+Cjx0ZXh0IHg9Ijc1IiB5PSIxMzAiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzk5OTk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+UHJvZmlsZTwvdGV4dD4KPC9zdmc+"
 };
 let availability = [];
 let bookedLessons = [];
@@ -18,6 +18,7 @@ let pricing = {
   virtual: true,
   inPerson: true
 };
+let currentUserId = null;
 
 // Sample data
 const sampleLessons = [
@@ -47,13 +48,56 @@ const sampleLessons = [
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', function() {
-  loadTeacherData();
+  // Get user ID from URL parameters
+  const urlParams = new URLSearchParams(window.location.search);
+  currentUserId = urlParams.get('user_id');
+  
+  if (currentUserId) {
+    loadTeacherDataFromAPI();
+  } else {
+    loadTeacherData();
+  }
+  
   updatePricingSummary();
   loadBookedLessons();
 });
 
+async function loadTeacherDataFromAPI() {
+  try {
+    // Fetch teacher profile from API
+    const response = await fetch(`/api/teacher/${currentUserId}/profile`);
+    const result = await response.json();
+    
+    if (result.success) {
+      teacherProfile = {
+        name: result.data.name || '',
+        email: result.data.email || '',
+        phone: result.data.phone || '',
+        location: result.data.location || '',
+        bio: result.data.bio || '',
+        instruments: result.data.instruments || [],
+        photo: result.data.photo_url || teacherProfile.photo
+      };
+      
+      // Update pricing from profile data
+      pricing.rate = result.data.rate_per_hour || 60;
+      pricing.virtual = result.data.virtual_available || false;
+      pricing.inPerson = result.data.in_person_available || false;
+      
+      populateProfileForm();
+      populatePricingForm();
+    } else {
+      console.error('Failed to load teacher profile:', result.message);
+      showAlert('Failed to load profile data', 'danger');
+    }
+  } catch (error) {
+    console.error('Error loading teacher data:', error);
+    showAlert('Error loading profile data', 'danger');
+  }
+}
+
 function loadTeacherData() {
-  // Load teacher profile data from localStorage or API
+  // Fallback: Load teacher profile data from localStorage
   const savedProfile = localStorage.getItem('teacherProfile');
   if (savedProfile) {
     teacherProfile = JSON.parse(savedProfile);
@@ -106,7 +150,7 @@ function previewPhoto(input) {
   }
 }
 
-function updateTeacherProfile() {
+async function updateTeacherProfile() {
   const form = document.getElementById('teacherProfileForm');
   if (!form.checkValidity()) {
     form.reportValidity();
@@ -121,7 +165,7 @@ function updateTeacherProfile() {
     location: document.getElementById('teacherLocation').value,
     bio: document.getElementById('teacherBio').value,
     instruments: Array.from(document.getElementById('teacherInstruments').selectedOptions).map(option => option.value),
-    photo: document.getElementById('profilePhotoPreview').src
+    photo_url: document.getElementById('profilePhotoPreview').src
   };
   
   // Validate required fields
@@ -130,11 +174,35 @@ function updateTeacherProfile() {
     return;
   }
   
-  // Update profile
-  teacherProfile = profileData;
-  localStorage.setItem('teacherProfile', JSON.stringify(profileData));
-  
-  showAlert('Profile updated successfully!', 'success');
+  if (currentUserId) {
+    // Update profile in database
+    try {
+      const response = await fetch(`/api/teacher/${currentUserId}/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(profileData)
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        teacherProfile = profileData;
+        showAlert('Profile updated successfully!', 'success');
+      } else {
+        showAlert(result.message || 'Failed to update profile', 'danger');
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      showAlert('Error updating profile', 'danger');
+    }
+  } else {
+    // Fallback: Update local storage
+    teacherProfile = profileData;
+    localStorage.setItem('teacherProfile', JSON.stringify(profileData));
+    showAlert('Profile updated successfully!', 'success');
+  }
 }
 
 function addAvailability() {

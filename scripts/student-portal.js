@@ -93,67 +93,23 @@ async function loadMyLessons() {
   }
 }
 
-// Sample availability data
-const sampleAvailability = [
-  {
-    id: 1,
-    teacher: "Jane Smith",
-    instrument: "piano",
-    date: "2024-01-15",
-    time: "10:00 AM",
-    duration: 60,
-    rate: 60,
-    type: "virtual"
-  },
-  {
-    id: 2,
-    teacher: "Mike Johnson",
-    instrument: "guitar",
-    date: "2024-01-16",
-    time: "2:00 PM",
-    duration: 60,
-    rate: 50,
-    type: "in-person"
-  },
-  {
-    id: 3,
-    teacher: "Sarah Wilson",
-    instrument: "piano",
-    date: "2024-01-17",
-    time: "3:00 PM",
-    duration: 90,
-    rate: 70,
-    type: "virtual"
+// Available lessons data (loaded from database)
+let availableLessons = [];
+
+// Load available lessons from database
+async function loadAvailableLessons() {
+  try {
+    const response = await fetch('/api/lessons/available?instrument=piano&type=virtual');
+    const result = await response.json();
+    
+    if (result.success) {
+      availableLessons = result.lessons;
+    } else {
+      console.error('Failed to load available lessons:', result.message);
+    }
+  } catch (error) {
+    console.error('Error loading available lessons:', error);
   }
-];
-
-// Initialize page
-document.addEventListener('DOMContentLoaded', function() {
-  loadStudentData();
-  renderCalendar();
-  loadMyLessons();
-});
-
-function loadStudentData() {
-  // Load student profile data from localStorage or API
-  const savedProfile = localStorage.getItem('studentProfile');
-  if (savedProfile) {
-    studentProfile = JSON.parse(savedProfile);
-  }
-  
-  // Always populate forms with current data
-  populateProfileForm();
-}
-
-function populateProfileForm() {
-  document.getElementById('studentName').value = studentProfile.name || '';
-  document.getElementById('studentEmail').value = studentProfile.email || '';
-  document.getElementById('studentPhone').value = studentProfile.phone || '';
-  document.getElementById('studentLocation').value = studentProfile.location || '';
-  document.getElementById('studentInstrument').value = studentProfile.instrument || '';
-  document.getElementById('studentLevel').value = studentProfile.level || '';
-  document.getElementById('studentGoals').value = studentProfile.goals || '';
-  document.getElementById('studentPhotoPreview').src = studentProfile.photo || 'https://via.placeholder.com/150';
 }
 
 function previewStudentPhoto(input) {
@@ -227,7 +183,7 @@ async function updateStudentProfile() {
   }
 }
 
-function searchAvailability() {
+async function searchAvailability() {
   const instrument = document.getElementById('searchInstrument').value;
   const lessonType = document.getElementById('lessonType').value;
   
@@ -236,12 +192,21 @@ function searchAvailability() {
     return;
   }
   
-  // Filter availability based on search criteria
-  const filteredAvailability = sampleAvailability.filter(slot => 
-    slot.instrument === instrument && slot.type === lessonType
-  );
-  
-  renderAvailabilityTable(filteredAvailability);
+  try {
+    // Fetch availability from database
+    const response = await fetch(`/api/lessons/available?instrument=${instrument}&type=${lessonType}`);
+    const result = await response.json();
+    
+    if (result.success) {
+      availableLessons = result.lessons;
+      renderAvailabilityTable(availableLessons);
+    } else {
+      showAlert('Failed to load availability data.', 'danger');
+    }
+  } catch (error) {
+    console.error('Error searching availability:', error);
+    showAlert('Error loading availability data.', 'danger');
+  }
 }
 
 function renderAvailabilityTable(availability) {
@@ -254,12 +219,12 @@ function renderAvailabilityTable(availability) {
   
   tbody.innerHTML = availability.map(slot => `
     <tr>
-      <td>${formatDate(slot.date)}</td>
-      <td>${slot.time}</td>
-      <td>${slot.teacher}</td>
-      <td>${capitalizeFirst(slot.instrument)}</td>
-      <td>${slot.duration} min</td>
-      <td>$${slot.rate}</td>
+      <td>${formatDate(slot.available_date)}</td>
+      <td>${slot.start_time}</td>
+      <td>${slot.teacher_name}</td>
+      <td>${capitalizeFirst(slot.instrument || 'Mixed')}</td>
+      <td>60 min</td>
+      <td>$${slot.rate_per_hour}</td>
       <td>
         <button class="btn btn-primary btn-sm" onclick="openBookingModal(${slot.id})">
           Book
@@ -270,16 +235,16 @@ function renderAvailabilityTable(availability) {
 }
 
 function openBookingModal(slotId) {
-  const slot = sampleAvailability.find(s => s.id === slotId);
+  const slot = availableLessons.find(s => s.id === slotId);
   if (!slot) return;
   
   // Populate modal with slot data
-  document.getElementById('bookingTeacher').value = slot.teacher;
-  document.getElementById('bookingInstrument').value = capitalizeFirst(slot.instrument);
-  document.getElementById('bookingDate').value = formatDate(slot.date);
-  document.getElementById('bookingTime').value = slot.time;
-  document.getElementById('bookingDuration').value = slot.duration;
-  document.getElementById('bookingType').value = slot.type;
+  document.getElementById('bookingTeacher').value = slot.teacher_name;
+  document.getElementById('bookingInstrument').value = capitalizeFirst(slot.instrument || 'Mixed');
+  document.getElementById('bookingDate').value = slot.available_date;
+  document.getElementById('bookingTime').value = slot.start_time;
+  document.getElementById('bookingDuration').value = 60;
+  document.getElementById('bookingType').value = slot.lesson_type;
   
   // Show modal
   const modal = new bootstrap.Modal(document.getElementById('bookingModal'));
@@ -354,8 +319,7 @@ function confirmBooking() {
     }
   }
   
-  // Save to localStorage
-  localStorage.setItem('studentLessons', JSON.stringify(myLessons));
+  // Lesson is saved to database via API call above
   
   // Close modal and refresh
   const modal = bootstrap.Modal.getInstance(document.getElementById('bookingModal'));
@@ -390,7 +354,7 @@ function renderCalendar() {
   // Days of the month
   for (let day = 1; day <= daysInMonth; day++) {
     const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const hasAvailability = sampleAvailability.some(slot => slot.date === dateStr);
+    const hasAvailability = availableLessons.some(slot => slot.available_date === dateStr);
     
     html += `<div class="calendar-day ${hasAvailability ? 'has-availability' : ''}" onclick="showDayAvailability('${dateStr}')">${day}</div>`;
   }
@@ -425,7 +389,7 @@ function currentMonth() {
 }
 
 function showDayAvailability(date) {
-  const dayAvailability = sampleAvailability.filter(slot => slot.date === date);
+  const dayAvailability = availableLessons.filter(slot => slot.available_date === date);
   
   if (dayAvailability.length === 0) {
     showAlert('No availability for this date', 'info');
@@ -434,20 +398,13 @@ function showDayAvailability(date) {
   
   // Show availability in a simple format
   const availabilityText = dayAvailability.map(slot => 
-    `${slot.time} - ${slot.teacher} (${slot.instrument}) - $${slot.rate}`
+    `${slot.start_time} - ${slot.teacher_name} (${slot.instrument || 'Mixed'}) - $${slot.rate_per_hour}`
   ).join('\n');
   
   alert(`Availability for ${formatDate(date)}:\n\n${availabilityText}`);
 }
 
-function loadMyLessons() {
-  const savedLessons = localStorage.getItem('studentLessons');
-  if (savedLessons) {
-    myLessons = JSON.parse(savedLessons);
-  }
-  
-  renderLessonsTable();
-}
+// loadMyLessons is already defined above and loads from database
 
 function renderLessonsTable() {
   const tbody = document.querySelector('#lessonsTableBody');
@@ -517,8 +474,8 @@ function filterLessons(filter) {
 
 function cancelLesson(lessonId) {
   if (confirm('Are you sure you want to cancel this lesson?')) {
+    // In a real app, you'd make an API call to cancel the lesson
     myLessons = myLessons.filter(lesson => lesson.id !== lessonId);
-    localStorage.setItem('studentLessons', JSON.stringify(myLessons));
     loadMyLessons();
     showAlert('Lesson cancelled successfully!', 'success');
   }
@@ -572,4 +529,5 @@ function showAlert(message, type) {
 // Initialize the portal when page loads
 document.addEventListener('DOMContentLoaded', function() {
   loadUserData();
+  loadAvailableLessons();
 });

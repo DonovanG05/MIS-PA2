@@ -153,7 +153,14 @@ async function submitTeacherSignup() {
       body: JSON.stringify(signupData)
     });
 
-    const result = await response.json();
+    let result;
+    try {
+      result = await response.json();
+    } catch (error) {
+      console.error('Failed to parse JSON response:', error);
+      showAlert('Server error. Please try again.', 'danger');
+      return;
+    }
 
     if (result.success) {
       showAlert('Welcome to Freelance Music! Your teacher account has been created successfully. Redirecting to your dashboard...', 'success');
