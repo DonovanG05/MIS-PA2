@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
     location TEXT,
     user_type TEXT CHECK(user_type IN ('student', 'teacher', 'admin')),
     password TEXT, -- User password for authentication
+    photo_url TEXT, -- Profile photo URL for all user types
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

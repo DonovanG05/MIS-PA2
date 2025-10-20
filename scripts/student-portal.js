@@ -15,9 +15,13 @@ async function loadUserData() {
     const urlParams = new URLSearchParams(window.location.search);
     const userId = urlParams.get('user_id') || localStorage.getItem('current_user_id');
     
+    console.log('Student portal loading with URL:', window.location.href);
+    console.log('User ID from URL:', userId);
+    
     if (!userId) {
-      // If no user ID, redirect to homepage
-      window.location.href = 'homepage.html';
+      // If no user ID, show error message but don't redirect immediately
+      console.log('No user ID found in URL parameters');
+      showAlert('No user session found. Please sign in again.', 'warning');
       return;
     }
     
@@ -56,7 +60,7 @@ function populateProfileForm() {
   
   // Update profile photo if available
   if (studentProfile.photo_url) {
-    const photoPreview = document.getElementById('photoPreview');
+    const photoPreview = document.getElementById('studentPhotoPreview');
     if (photoPreview) {
       photoPreview.src = studentProfile.photo_url;
       photoPreview.style.display = 'block';
@@ -84,7 +88,7 @@ async function loadMyLessons() {
     
     if (result.success) {
       myLessons = result.lessons;
-      displayMyLessons();
+      renderLessonsTable();
     } else {
       console.error('Failed to load lessons:', result.message);
     }
@@ -381,7 +385,7 @@ function nextMonth() {
   renderCalendar();
 }
 
-function currentMonth() {
+function goToCurrentMonth() {
   const now = new Date();
   currentMonth = now.getMonth();
   currentYear = now.getFullYear();
@@ -416,10 +420,10 @@ function renderLessonsTable() {
   
   tbody.innerHTML = myLessons.map(lesson => `
     <tr>
-      <td>${formatDate(lesson.date)} ${lesson.time}</td>
-      <td>${lesson.teacher}</td>
+      <td>${formatDate(lesson.lesson_date)} ${lesson.lesson_time}</td>
+      <td>${lesson.teacher_name}</td>
       <td>${capitalizeFirst(lesson.instrument)}</td>
-      <td>${capitalizeFirst(lesson.type)}</td>
+      <td>${capitalizeFirst(lesson.lesson_type)}</td>
       <td>${lesson.duration} min</td>
       <td><span class="badge bg-${getStatusColor(lesson.status)}">${capitalizeFirst(lesson.status)}</span></td>
       <td>
@@ -457,10 +461,10 @@ function filterLessons(filter) {
   
   tbody.innerHTML = filteredLessons.map(lesson => `
     <tr>
-      <td>${formatDate(lesson.date)} ${lesson.time}</td>
-      <td>${lesson.teacher}</td>
+      <td>${formatDate(lesson.lesson_date)} ${lesson.lesson_time}</td>
+      <td>${lesson.teacher_name}</td>
       <td>${capitalizeFirst(lesson.instrument)}</td>
-      <td>${capitalizeFirst(lesson.type)}</td>
+      <td>${capitalizeFirst(lesson.lesson_type)}</td>
       <td>${lesson.duration} min</td>
       <td><span class="badge bg-${getStatusColor(lesson.status)}">${capitalizeFirst(lesson.status)}</span></td>
       <td>

@@ -346,11 +346,11 @@ async function submitSignIn() {
       // Redirect based on user type
       setTimeout(() => {
         if (result.user.user_type === 'teacher') {
-          window.location.href = 'teacher-portal.html';
+          window.location.href = `teacher-portal.html?user_id=${result.user.id}`;
         } else if (result.user.user_type === 'student') {
-          window.location.href = 'student-portal.html';
+          window.location.href = `student-portal.html?user_id=${result.user.id}`;
         } else if (result.user.user_type === 'admin') {
-          window.location.href = 'admin-portal.html';
+          window.location.href = `admin-portal.html?user_id=${result.user.id}`;
         }
       }, 2000);
     } else {

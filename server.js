@@ -254,7 +254,35 @@ app.get('/api/teacher/:id/lessons', async (req, res) => {
   }
 });
 
-// Get teacher profile
+// Get teacher profile by email
+app.get('/api/teacher/email/:email/profile', async (req, res) => {
+  try {
+    const { email } = req.params;
+    
+    const teacher = await db.getTeacherByEmail(email);
+    
+    if (teacher) {
+      res.json({
+        success: true,
+        data: teacher
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: 'Teacher not found'
+      });
+    }
+  } catch (error) {
+    console.error('Get teacher profile by email error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get teacher profile',
+      error: error.message
+    });
+  }
+});
+
+// Get teacher profile by ID (for backward compatibility)
 app.get('/api/teacher/:id/profile', async (req, res) => {
   try {
     const { id } = req.params;
@@ -320,7 +348,7 @@ app.get('/api/student/:id/profile', async (req, res) => {
   try {
     const { id } = req.params;
     
-    const student = await db.getStudentProfile(parseInt(id));
+    const student = await db.getStudentByUserId(parseInt(id));
     
     if (student) {
       res.json({
@@ -349,7 +377,17 @@ app.put('/api/student/:id/profile', async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
     
-    const result = await db.updateStudent(parseInt(id), updateData);
+    // First get the student to find the student table ID
+    const student = await db.getStudentByUserId(parseInt(id));
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found'
+      });
+    }
+    
+    // Update both user and student tables
+    const result = await db.updateStudent(student.id, updateData);
     
     res.json({
       success: true,

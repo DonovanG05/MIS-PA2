@@ -119,8 +119,8 @@ class Database {
   // Create new user
   async createUser(userData) {
     const sql = `
-      INSERT INTO users (name, email, password, phone, location, user_type)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO users (name, email, password, phone, location, user_type, photo_url)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       userData.name,
@@ -128,7 +128,8 @@ class Database {
       userData.password, // Store password as plain text for now (in production, hash it)
       userData.phone,
       userData.location,
-      userData.user_type
+      userData.user_type,
+      userData.photo_url || null
     ];
     return await this.run(sql, params);
   }
@@ -186,6 +187,21 @@ class Database {
     return teacher;
   }
 
+  // Get teacher by email
+  async getTeacherByEmail(email) {
+    const sql = `
+      SELECT t.*, u.name, u.email, u.phone, u.location 
+      FROM teachers t 
+      JOIN users u ON t.user_id = u.id 
+      WHERE u.email = ?
+    `;
+    const teacher = await this.get(sql, [email]);
+    if (teacher) {
+      teacher.instruments = JSON.parse(teacher.instruments);
+    }
+    return teacher;
+  }
+
   // Update teacher profile
   async updateTeacher(teacherId, updateData) {
     const sql = `
@@ -226,7 +242,7 @@ class Database {
   // Get student by user ID
   async getStudentByUserId(userId) {
     const sql = `
-      SELECT s.*, u.name, u.email, u.phone, u.location 
+      SELECT s.*, u.name, u.email, u.phone, u.location, u.photo_url
       FROM students s 
       JOIN users u ON s.user_id = u.id 
       WHERE s.user_id = ?
@@ -237,7 +253,7 @@ class Database {
   // Get student profile by student ID
   async getStudentProfile(studentId) {
     const sql = `
-      SELECT s.*, u.name, u.email, u.phone, u.location, u.password
+      SELECT s.*, u.name, u.email, u.phone, u.location, u.password, u.photo_url
       FROM students s 
       JOIN users u ON s.user_id = u.id 
       WHERE s.id = ?
@@ -256,7 +272,7 @@ class Database {
     // Update user table
     const userSql = `
       UPDATE users 
-      SET name = ?, email = ?, phone = ?, location = ?, updated_at = CURRENT_TIMESTAMP
+      SET name = ?, email = ?, phone = ?, location = ?, photo_url = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `;
     const userParams = [
@@ -264,6 +280,7 @@ class Database {
       updateData.email,
       updateData.phone,
       updateData.location,
+      updateData.photo_url,
       student.user_id
     ];
     await this.run(userSql, userParams);
