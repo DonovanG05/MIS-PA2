@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Teacher Portal - Freelance Music</title>
+
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous"
+    />
+
+    <!-- Bootstrap Icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+      integrity="sha384-4LISF5TTJXyL+8FfaTKAHPfp/BcWp8xWwMivssIY3dXyf/TojXnnMf9Ktg0PtM2b1"
+      crossorigin="anonymous"
+    />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="./styles/main.css" />
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary py-3">
+      <div class="container">
+        <a class="navbar-brand fw-bold fs-3" href="homepage.html">
+          <span style="font-size: 1.2em;">🎵</span> Freelance Music
+        </a>
+        <div class="navbar-nav ms-auto">
+          <span class="navbar-text me-3">
+            <i class="bi bi-person-check me-1"></i>Teacher Portal
+          </span>
+          <a class="btn btn-outline-light btn-sm" href="homepage.html">
+            <i class="bi bi-house me-1"></i>Home
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid py-4">
+      <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2">
+          <div class="list-group">
+            <a href="#profile" class="list-group-item list-group-item-action active" data-bs-toggle="tab">
+              <i class="bi bi-person me-2"></i>Edit Profile
+            </a>
+            <a href="#schedule" class="list-group-item list-group-item-action" data-bs-toggle="tab">
+              <i class="bi bi-calendar3 me-2"></i>Schedule Availability
+            </a>
+            <a href="#lessons" class="list-group-item list-group-item-action" data-bs-toggle="tab">
+              <i class="bi bi-book me-2"></i>View Lessons
+            </a>
+            <a href="#pricing" class="list-group-item list-group-item-action" data-bs-toggle="tab">
+              <i class="bi bi-currency-dollar me-2"></i>Set Pricing
+            </a>
+          </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="col-md-9 col-lg-10">
+          <div class="tab-content">
+            <!-- Profile Tab -->
+            <div class="tab-pane fade show active" id="profile">
+              <h2 class="mb-4">Edit Teacher Profile</h2>
+              
+              <div class="row">
+                <div class="col-md-4">
+                  <div class="card">
+                    <div class="card-header">
+                      <h5 class="mb-0">Profile Photo</h5>
+                    </div>
+                    <div class="card-body text-center">
+                      <div class="mb-3">
+                        <img id="profilePhotoPreview" src="https://via.placeholder.com/150" class="rounded-circle" alt="Profile Photo" style="width: 150px; height: 150px; object-fit: cover;">
+                      </div>
+                      <input type="file" class="form-control" id="profilePhoto" accept="image/*" onchange="previewPhoto(this)">
+                      <div class="form-text">Update your professional photo</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-8">
+                  <div class="card">
+                    <div class="card-header">
+                      <h5 class="mb-0">Profile Information</h5>
+                    </div>
+                    <div class="card-body">
+                      <form id="teacherProfileForm">
+                        <div class="row">
+                          <div class="col-md-6">
+                            <div class="mb-3">
+                              <label for="teacherName" class="form-label">Full Name *</label>
+                              <input type="text" class="form-control" id="teacherName" required>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="mb-3">
+                              <label for="teacherEmail" class="form-label">Email *</label>
+                              <input type="email" class="form-control" id="teacherEmail" required>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="mb-3">
+                              <label for="teacherPhone" class="form-label">Phone *</label>
+                              <input type="tel" class="form-control" id="teacherPhone" required>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="mb-3">
+                              <label for="teacherLocation" class="form-label">Location *</label>
+                              <input type="text" class="form-control" id="teacherLocation" placeholder="City, State" required>
+                            </div>
+                          </div>
+                          <div class="col-12">
+                            <div class="mb-3">
+                              <label for="teacherInstruments" class="form-label">Instruments I Teach *</label>
+                              <select class="form-select" id="teacherInstruments" multiple required>
+                                <option value="piano">Piano</option>
+                                <option value="guitar">Guitar</option>
+                                <option value="violin">Violin</option>
+                                <option value="drums">Drums</option>
+                                <option value="voice">Voice</option>
+                                <option value="bass">Bass</option>
+                                <option value="saxophone">Saxophone</option>
+                                <option value="trumpet">Trumpet</option>
+                                <option value="flute">Flute</option>
+                                <option value="cello">Cello</option>
+                              </select>
+                              <div class="form-text">Hold Ctrl/Cmd to select multiple instruments</div>
+                            </div>
+                          </div>
+                          <div class="col-12">
+                            <div class="mb-3">
+                              <label for="teacherBio" class="form-label">Description *</label>
+                              <textarea class="form-control" id="teacherBio" rows="4" placeholder="Tell students about your teaching style, experience, and what makes you unique..." required></textarea>
+                            </div>
+                          </div>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="updateTeacherProfile()">
+                          <i class="bi bi-save me-2"></i>Update Profile
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Schedule Tab -->
+            <div class="tab-pane fade" id="schedule">
+              <h2 class="mb-4">Schedule Availability</h2>
+              
+              <div class="row">
+                <div class="col-md-8">
+                  <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                      <h5 class="mb-0">My Available Times</h5>
+                      <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAvailabilityModal">
+                        <i class="bi bi-plus me-1"></i>Add Availability
+                      </button>
+                    </div>
+                    <div class="card-body">
+                      <div class="table-responsive">
+                        <table class="table table-striped" id="availabilityTable">
+                          <thead>
+                            <tr>
+                              <th>Date</th>
+                              <th>Start Time</th>
+                              <th>End Time</th>
+                              <th>Duration</th>
+                              <th>Status</th>
+                              <th>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td colspan="6" class="text-center text-muted">No availability scheduled</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="card">
+                    <div class="card-header">
+                      <h5 class="mb-0">Quick Add</h5>
+                    </div>
+                    <div class="card-body">
+                      <form id="quickAvailabilityForm">
+                        <div class="mb-3">
+                          <label for="quickDate" class="form-label">Date</label>
+                          <input type="date" class="form-control" id="quickDate" required>
+                        </div>
+                        <div class="mb-3">
+                          <label for="quickStartTime" class="form-label">Start Time</label>
+                          <input type="time" class="form-control" id="quickStartTime" required>
+                        </div>
+                        <div class="mb-3">
+                          <label for="quickDuration" class="form-label">Duration</label>
+                          <select class="form-select" id="quickDuration" required>
+                            <option value="30">30 minutes</option>
+                            <option value="60">60 minutes</option>
+                            <option value="90">90 minutes</option>
+                            <option value="120">120 minutes</option>
+                          </select>
+                        </div>
+                        <button type="button" class="btn btn-primary w-100" onclick="addQuickAvailability()">
+                          <i class="bi bi-plus me-1"></i>Add Time
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Lessons Tab -->
+            <div class="tab-pane fade" id="lessons">
+              <h2 class="mb-4">View Booked Lessons</h2>
+              
+              <div class="card">
+                <div class="card-header">
+                  <div class="row align-items-center">
+                    <div class="col-md-6">
+                      <h5 class="mb-0">Booked Lessons</h5>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-primary btn-sm active" onclick="filterLessons('upcoming')">Upcoming</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="filterLessons('past')">Past</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="filterLessons('all')">All</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-striped" id="lessonsTable">
+                      <thead>
+                        <tr>
+                          <th>Date & Time</th>
+                          <th>Student</th>
+                          <th>Instrument</th>
+                          <th>Type</th>
+                          <th>Duration</th>
+                          <th>Revenue</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td colspan="7" class="text-center text-muted">No lessons booked</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pricing Tab -->
+            <div class="tab-pane fade" id="pricing">
+              <h2 class="mb-4">Set Lesson Pricing</h2>
+              
+              <div class="row">
+                <div class="col-md-8">
+                  <div class="card">
+                    <div class="card-header">
+                      <h5 class="mb-0">Revenue Per Lesson - Set Your Rates</h5>
+                    </div>
+                    <div class="card-body">
+                      <form id="pricingForm">
+                        <div class="row">
+                          <div class="col-md-6">
+                            <div class="mb-3">
+                              <label for="lessonRate" class="form-label">Cost Per Lesson ($) *</label>
+                              <input type="number" class="form-control" id="lessonRate" min="20" max="500" step="5" required>
+                              <div class="form-text">Set your desired flat rate per lesson</div>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="mb-3">
+                              <label for="lessonDuration" class="form-label">Default Lesson Duration</label>
+                              <select class="form-select" id="lessonDuration">
+                                <option value="30">30 minutes</option>
+                                <option value="45">45 minutes</option>
+                                <option value="60" selected>60 minutes</option>
+                                <option value="90">90 minutes</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div class="col-12">
+                            <div class="mb-3">
+                              <label class="form-label">Lesson Type Availability</label>
+                              <div class="row">
+                                <div class="col-md-6">
+                                  <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="virtualLessons" checked>
+                                    <label class="form-check-label" for="virtualLessons">
+                                      Virtual Lessons
+                                    </label>
+                                  </div>
+                                </div>
+                                <div class="col-md-6">
+                                  <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="inPersonLessons" checked>
+                                    <label class="form-check-label" for="inPersonLessons">
+                                      In-Person Lessons
+                                    </label>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="savePricing()">
+                          <i class="bi bi-save me-2"></i>Save Pricing
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="card">
+                    <div class="card-header">
+                      <h5 class="mb-0">Pricing Summary</h5>
+                    </div>
+                    <div class="card-body">
+                      <div class="text-center">
+                        <h4 class="text-primary" id="currentRate">$0</h4>
+                        <p class="text-muted mb-2">per lesson</p>
+                        <hr>
+                        <p class="small text-muted">
+                          Platform takes 10% commission<br>
+                          You earn: <span id="teacherEarnings" class="fw-bold">$0</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Availability Modal -->
+    <div class="modal fade" id="addAvailabilityModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Add Availability</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <form id="availabilityForm">
+              <div class="mb-3">
+                <label for="availableDate" class="form-label">Date *</label>
+                <input type="date" class="form-control" id="availableDate" required>
+              </div>
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="startTime" class="form-label">Start Time *</label>
+                    <input type="time" class="form-control" id="startTime" required>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="duration" class="form-label">Duration *</label>
+                    <select class="form-select" id="duration" required>
+                      <option value="30">30 minutes</option>
+                      <option value="60">60 minutes</option>
+                      <option value="90">90 minutes</option>
+                      <option value="120">120 minutes</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Lesson Type *</label>
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="modalVirtual" value="virtual">
+                      <label class="form-check-label" for="modalVirtual">
+                        Virtual
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="modalInPerson" value="in-person">
+                      <label class="form-check-label" for="modalInPerson">
+                        In-Person
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="addAvailability()">Add Availability</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bootstrap JS bundle -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+      crossorigin="anonymous"
+    ></script>
+
+    <!-- Custom JS -->
+    <script src="./scripts/teacher-portal.js"></script>
+  </body>
+</html>

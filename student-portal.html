@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Student Portal - Freelance Music</title>
+
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous"
+    />
+
+    <!-- Bootstrap Icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+      integrity="sha384-4LISF5TTJXyL+8FfaTKAHPfp/BcWp8xWwMivssIY3dXyf/TojXnnMf9Ktg0PtM2b1"
+      crossorigin="anonymous"
+    />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="./styles/main.css" />
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary py-3">
+      <div class="container">
+        <a class="navbar-brand fw-bold fs-3" href="homepage.html">
+          <span style="font-size: 1.2em;">🎵</span> Freelance Music
+        </a>
+        <div class="navbar-nav ms-auto">
+          <span class="navbar-text me-3">
+            <i class="bi bi-person-plus me-1"></i>Student Portal
+          </span>
+          <a class="btn btn-outline-light btn-sm" href="homepage.html">
+            <i class="bi bi-house me-1"></i>Home
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid py-4">
+      <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2">
+          <div class="list-group">
+            <a href="#profile" class="list-group-item list-group-item-action active" data-bs-toggle="tab">
+              <i class="bi bi-person me-2"></i>Edit Profile
+            </a>
+            <a href="#schedule" class="list-group-item list-group-item-action" data-bs-toggle="tab">
+              <i class="bi bi-calendar-plus me-2"></i>Schedule Lessons
+            </a>
+            <a href="#calendar" class="list-group-item list-group-item-action" data-bs-toggle="tab">
+              <i class="bi bi-calendar3 me-2"></i>Calendar View
+            </a>
+            <a href="#lessons" class="list-group-item list-group-item-action" data-bs-toggle="tab">
+              <i class="bi bi-book me-2"></i>My Lessons
+            </a>
+          </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="col-md-9 col-lg-10">
+          <div class="tab-content">
+            <!-- Profile Tab -->
+            <div class="tab-pane fade show active" id="profile">
+              <h2 class="mb-4">Edit Profile</h2>
+              
+              <div class="row">
+                <div class="col-md-4">
+                  <div class="card">
+                    <div class="card-header">
+                      <h5 class="mb-0">Profile Photo</h5>
+                    </div>
+                    <div class="card-body text-center">
+                      <div class="mb-3">
+                        <img id="studentPhotoPreview" src="https://via.placeholder.com/150" class="rounded-circle" alt="Profile Photo" style="width: 150px; height: 150px; object-fit: cover;">
+                      </div>
+                      <input type="file" class="form-control" id="studentPhoto" accept="image/*" onchange="previewStudentPhoto(this)">
+                      <div class="form-text">Update your profile photo</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-8">
+                  <div class="card">
+                    <div class="card-header">
+                      <h5 class="mb-0">Profile Information</h5>
+                    </div>
+                    <div class="card-body">
+                      <form id="studentProfileForm">
+                        <div class="row">
+                          <div class="col-md-6">
+                            <div class="mb-3">
+                              <label for="studentName" class="form-label">Full Name *</label>
+                              <input type="text" class="form-control" id="studentName" required>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="mb-3">
+                              <label for="studentEmail" class="form-label">Email *</label>
+                              <input type="email" class="form-control" id="studentEmail" required>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="mb-3">
+                              <label for="studentPhone" class="form-label">Phone *</label>
+                              <input type="tel" class="form-control" id="studentPhone" required>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="mb-3">
+                              <label for="studentLocation" class="form-label">Location *</label>
+                              <input type="text" class="form-control" id="studentLocation" placeholder="City, State" required>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="mb-3">
+                              <label for="studentInstrument" class="form-label">Primary Instrument *</label>
+                              <select class="form-select" id="studentInstrument" required>
+                                <option value="">Select instrument</option>
+                                <option value="piano">Piano</option>
+                                <option value="guitar">Guitar</option>
+                                <option value="violin">Violin</option>
+                                <option value="drums">Drums</option>
+                                <option value="voice">Voice</option>
+                                <option value="bass">Bass</option>
+                                <option value="saxophone">Saxophone</option>
+                                <option value="trumpet">Trumpet</option>
+                                <option value="flute">Flute</option>
+                                <option value="cello">Cello</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="mb-3">
+                              <label for="studentLevel" class="form-label">Skill Level *</label>
+                              <select class="form-select" id="studentLevel" required>
+                                <option value="">Select level</option>
+                                <option value="beginner">Beginner</option>
+                                <option value="intermediate">Intermediate</option>
+                                <option value="advanced">Advanced</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div class="col-12">
+                            <div class="mb-3">
+                              <label for="studentGoals" class="form-label">Learning Goals</label>
+                              <textarea class="form-control" id="studentGoals" rows="3" placeholder="What do you hope to achieve with music lessons?"></textarea>
+                            </div>
+                          </div>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="updateStudentProfile()">
+                          <i class="bi bi-save me-2"></i>Update Profile
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Schedule Lessons Tab -->
+            <div class="tab-pane fade" id="schedule">
+              <h2 class="mb-4">Schedule Lessons</h2>
+              
+              <!-- Search Filters -->
+              <div class="card mb-4">
+                <div class="card-body">
+                  <div class="row">
+                    <div class="col-md-4">
+                      <label for="searchInstrument" class="form-label">Search by Instrument *</label>
+                      <select class="form-select" id="searchInstrument" required>
+                        <option value="">Select instrument</option>
+                        <option value="piano">Piano</option>
+                        <option value="guitar">Guitar</option>
+                        <option value="violin">Violin</option>
+                        <option value="drums">Drums</option>
+                        <option value="voice">Voice</option>
+                        <option value="bass">Bass</option>
+                        <option value="saxophone">Saxophone</option>
+                        <option value="trumpet">Trumpet</option>
+                        <option value="flute">Flute</option>
+                        <option value="cello">Cello</option>
+                      </select>
+                    </div>
+                    <div class="col-md-4">
+                      <label for="lessonType" class="form-label">Lesson Type *</label>
+                      <select class="form-select" id="lessonType" required>
+                        <option value="">Select type</option>
+                        <option value="virtual">Virtual</option>
+                        <option value="in-person">In-Person</option>
+                      </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                      <button type="button" class="btn btn-primary w-100" onclick="searchAvailability()">
+                        <i class="bi bi-search me-1"></i>Search Availability
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Availability Table -->
+              <div class="card">
+                <div class="card-header">
+                  <h5 class="mb-0">Available Lesson Times</h5>
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-striped" id="availabilityTable">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Time</th>
+                          <th>Teacher</th>
+                          <th>Instrument</th>
+                          <th>Duration</th>
+                          <th>Rate</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td colspan="7" class="text-center text-muted">Select an instrument and lesson type to view availability</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Calendar View Tab -->
+            <div class="tab-pane fade" id="calendar">
+              <h2 class="mb-4">Calendar View - Schedule Lessons</h2>
+              
+              <!-- Calendar Controls -->
+              <div class="card mb-4">
+                <div class="card-body">
+                  <div class="row align-items-center">
+                    <div class="col-md-6">
+                      <div class="row">
+                        <div class="col-md-6">
+                          <label for="calendarInstrument" class="form-label">Instrument</label>
+                          <select class="form-select" id="calendarInstrument">
+                            <option value="">All Instruments</option>
+                            <option value="piano">Piano</option>
+                            <option value="guitar">Guitar</option>
+                            <option value="violin">Violin</option>
+                            <option value="drums">Drums</option>
+                            <option value="voice">Voice</option>
+                          </select>
+                        </div>
+                        <div class="col-md-6">
+                          <label for="calendarType" class="form-label">Lesson Type</label>
+                          <select class="form-select" id="calendarType">
+                            <option value="">Both</option>
+                            <option value="virtual">Virtual</option>
+                            <option value="in-person">In-Person</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-6 text-end">
+                      <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-primary" onclick="previousMonth()">Previous</button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="currentMonth()">Today</button>
+                        <button type="button" class="btn btn-outline-primary" onclick="nextMonth()">Next</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Calendar -->
+              <div class="card">
+                <div class="card-header">
+                  <h5 class="mb-0">Lesson Availability Calendar</h5>
+                </div>
+                <div class="card-body">
+                  <div id="calendarView">
+                    <div class="text-center">
+                      <h4 id="currentMonth">January 2024</h4>
+                      <div id="calendarGrid" class="calendar-grid">
+                        <!-- Calendar will be generated here -->
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- My Lessons Tab -->
+            <div class="tab-pane fade" id="lessons">
+              <h2 class="mb-4">My Lessons</h2>
+              
+              <!-- Lesson Filters -->
+              <div class="row mb-4">
+                <div class="col-md-6">
+                  <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-primary active" onclick="filterLessons('all')">All Lessons</button>
+                    <button type="button" class="btn btn-outline-primary" onclick="filterLessons('upcoming')">Upcoming</button>
+                    <button type="button" class="btn btn-outline-primary" onclick="filterLessons('completed')">Completed</button>
+                    <button type="button" class="btn btn-outline-primary" onclick="filterLessons('cancelled')">Cancelled</button>
+                  </div>
+                </div>
+                <div class="col-md-6 text-end">
+                  <button type="button" class="btn btn-success" data-bs-toggle="tab" data-bs-target="#schedule">
+                    <i class="bi bi-plus-circle me-1"></i>Book New Lesson
+                  </button>
+                </div>
+              </div>
+
+              <!-- Lessons List -->
+              <div class="card">
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-striped">
+                      <thead>
+                        <tr>
+                          <th>Date & Time</th>
+                          <th>Teacher</th>
+                          <th>Instrument</th>
+                          <th>Type</th>
+                          <th>Duration</th>
+                          <th>Status</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody id="lessonsTableBody">
+                        <tr>
+                          <td colspan="7" class="text-center text-muted">No lessons found</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Booking Modal -->
+    <div class="modal fade" id="bookingModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Book Lesson</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <form id="bookingForm">
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="bookingTeacher" class="form-label">Teacher</label>
+                    <input type="text" class="form-control" id="bookingTeacher" readonly>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="bookingInstrument" class="form-label">Instrument</label>
+                    <input type="text" class="form-control" id="bookingInstrument" readonly>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="bookingDate" class="form-label">Date</label>
+                    <input type="text" class="form-control" id="bookingDate" readonly>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="bookingTime" class="form-label">Time</label>
+                    <input type="text" class="form-control" id="bookingTime" readonly>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="bookingDuration" class="form-label">Duration</label>
+                    <select class="form-select" id="bookingDuration" required>
+                      <option value="30">30 minutes</option>
+                      <option value="60" selected>60 minutes</option>
+                      <option value="90">90 minutes</option>
+                      <option value="120">120 minutes</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="bookingType" class="form-label">Lesson Type</label>
+                    <select class="form-select" id="bookingType" required>
+                      <option value="virtual">Virtual</option>
+                      <option value="in-person">In-Person</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div class="mb-3">
+                    <label for="recurringLessons" class="form-label">Recurring Lessons</label>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="recurringLessons" onchange="toggleRecurringOptions()">
+                      <label class="form-check-label" for="recurringLessons">
+                        Schedule recurring lessons
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6" id="recurringOptions" style="display: none;">
+                  <div class="mb-3">
+                    <label for="recurringInterval" class="form-label">Interval</label>
+                    <select class="form-select" id="recurringInterval">
+                      <option value="weekly">Weekly</option>
+                      <option value="biweekly">Bi-weekly</option>
+                      <option value="monthly">Monthly</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="col-md-6" id="recurringCount" style="display: none;">
+                  <div class="mb-3">
+                    <label for="recurringCount" class="form-label">Number of Lessons</label>
+                    <input type="number" class="form-control" id="recurringCount" min="2" max="12" value="4">
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div class="mb-3">
+                    <label for="sheetMusic" class="form-label">Sheet Music (Optional)</label>
+                    <input type="file" class="form-control" id="sheetMusic" accept=".pdf,.jpg,.jpeg,.png" multiple>
+                    <div class="form-text">Upload PDF, JPG, or PNG files to practice with your instructor</div>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div class="mb-3">
+                    <label for="bookingNotes" class="form-label">Notes (Optional)</label>
+                    <textarea class="form-control" id="bookingNotes" rows="3" placeholder="Any specific requests or notes for your instructor"></textarea>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="confirmBooking()">Book Lesson</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bootstrap JS bundle -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+      crossorigin="anonymous"
+    ></script>
+
+    <!-- Custom JS -->
+    <script src="./scripts/student-portal.js"></script>
+  </body>
+</html>
