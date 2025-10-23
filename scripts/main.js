@@ -229,7 +229,8 @@ async function submitStudentSignup() {
     inPerson: document.getElementById('studentInPerson').checked,
     goals: document.getElementById('studentGoals').value,
     budget: document.getElementById('studentBudget').value,
-    schedule: document.getElementById('studentSchedule').value
+    schedule: document.getElementById('studentSchedule').value,
+    referralSource: document.getElementById('studentReferralSource').value
   };
   
   // Validate password
@@ -266,7 +267,8 @@ async function submitStudentSignup() {
       location: formData.location,
       primary_instrument: formData.instrument,
       skill_level: formData.level,
-      learning_goals: formData.goals
+      learning_goals: formData.goals,
+      referral_source: formData.referralSource
     };
 
     // Send to API

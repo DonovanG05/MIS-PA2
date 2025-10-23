@@ -180,13 +180,14 @@
                               <th>Start Time</th>
                               <th>End Time</th>
                               <th>Duration</th>
+                              <th>Instruments</th>
                               <th>Status</th>
                               <th>Actions</th>
                             </tr>
                           </thead>
                           <tbody>
                             <tr>
-                              <td colspan="6" class="text-center text-muted">No availability scheduled</td>
+                              <td colspan="7" class="text-center text-muted">No availability scheduled</td>
                             </tr>
                           </tbody>
                         </table>
@@ -264,12 +265,13 @@
                           <th>Duration</th>
                           <th>Revenue</th>
                           <th>Status</th>
+                          <th>Sheet Music</th>
                           <th>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         <tr>
-                          <td colspan="8" class="text-center text-muted">No lessons booked</td>
+                          <td colspan="9" class="text-center text-muted">No lessons booked</td>
                         </tr>
                       </tbody>
                     </table>
@@ -534,6 +536,22 @@
                     </div>
                   </div>
                 </div>
+              </div>
+              <div class="mb-3">
+                <label for="availableInstruments" class="form-label">Available Instruments *</label>
+                <select class="form-select" id="availableInstruments" multiple required>
+                  <option value="piano">Piano</option>
+                  <option value="guitar">Guitar</option>
+                  <option value="violin">Violin</option>
+                  <option value="drums">Drums</option>
+                  <option value="voice">Voice</option>
+                  <option value="bass">Bass</option>
+                  <option value="saxophone">Saxophone</option>
+                  <option value="trumpet">Trumpet</option>
+                  <option value="flute">Flute</option>
+                  <option value="cello">Cello</option>
+                </select>
+                <div class="form-text">Hold Ctrl (or Cmd on Mac) to select multiple instruments</div>
               </div>
             </form>
           </div>

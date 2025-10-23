@@ -227,14 +227,15 @@ class Database {
   // Create new student
   async createStudent(studentData) {
     const sql = `
-      INSERT INTO students (user_id, primary_instrument, skill_level, learning_goals)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO students (user_id, primary_instrument, skill_level, learning_goals, referral_source)
+      VALUES (?, ?, ?, ?, ?)
     `;
     const params = [
       studentData.user_id,
       studentData.primary_instrument,
       studentData.skill_level,
-      studentData.learning_goals
+      studentData.learning_goals,
+      studentData.referral_source
     ];
     return await this.run(sql, params);
   }
@@ -306,19 +307,26 @@ class Database {
   async getAvailableLessons(instrument, lessonType) {
     const currentDate = new Date().toISOString().split('T')[0];
     const sql = `
-      SELECT a.*, t.rate_per_hour, u.name as teacher_name, t.instruments
+      SELECT a.*, t.rate_per_hour, u.name as teacher_name, a.instruments
       FROM availability a
       JOIN teachers t ON a.teacher_id = t.teacherID
       JOIN users u ON t.user_id = u.id
-      WHERE (t.instruments LIKE ? OR t.instruments IS NULL) AND a.lesson_type = ? AND a.is_available = 1
+      WHERE a.lesson_type = ? AND a.is_available = 1
       AND a.available_date >= ?
       ORDER BY a.available_date, a.start_time
     `;
-    const rows = await this.all(sql, [`%${instrument}%`, lessonType, currentDate]);
-    return rows.map(row => ({
-      ...row,
-      instruments: row.instruments ? JSON.parse(row.instruments) : []
-    }));
+    const rows = await this.all(sql, [lessonType, currentDate]);
+    return rows.map(row => {
+      const instruments = row.instruments ? JSON.parse(row.instruments) : [];
+      // Filter by instrument if specified
+      if (instrument && !instruments.includes(instrument)) {
+        return null;
+      }
+      return {
+        ...row,
+        instruments: instruments
+      };
+    }).filter(row => row !== null);
   }
 
   // Clean up past availability entries
@@ -402,7 +410,7 @@ class Database {
         lessonData.lesson_type,
         'upcoming',
         lessonData.notes,
-        JSON.stringify(lessonData.sheet_music_urls || []),
+        lessonData.sheet_music_urls || '[]',
         lessonData.recurring_interval || null,
         lessonData.recurring_count || 1,
         totalCost,
@@ -472,15 +480,16 @@ class Database {
   // Add teacher availability
   async addAvailability(availabilityData) {
     const sql = `
-      INSERT INTO availability (teacher_id, available_date, start_time, end_time, lesson_type)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO availability (teacher_id, available_date, start_time, end_time, lesson_type, instruments)
+      VALUES (?, ?, ?, ?, ?, ?)
     `;
     const params = [
       availabilityData.teacher_id,
       availabilityData.available_date,
       availabilityData.start_time,
       availabilityData.end_time,
-      availabilityData.lesson_type
+      availabilityData.lesson_type,
+      JSON.stringify(availabilityData.instruments)
     ];
     return await this.run(sql, params);
   }
@@ -567,32 +576,56 @@ class Database {
         WHERE status = 'completed'
       `);
 
-      // Get popular instruments
+      // Get popular instruments (excluding 'mixed') - using platform fees
       const popularInstruments = await this.all(`
         SELECT 
-          instrument,
+          l.instrument,
           COUNT(*) as lesson_count,
-          SUM(total_cost) as revenue
-        FROM lessons
-        WHERE status IN ('upcoming', 'completed')
-        GROUP BY instrument
+          SUM(p.platform_fee) as revenue
+        FROM lessons l
+        JOIN payments p ON l.id = p.lesson_id
+        WHERE l.status IN ('upcoming', 'completed') 
+        AND l.instrument IS NOT NULL 
+        AND l.instrument != 'mixed'
+        AND p.status = 'completed'
+        GROUP BY l.instrument
         ORDER BY lesson_count DESC
         LIMIT 5
       `);
 
-      // Get revenue by quarter (simplified - using current year)
+      // Get revenue by student (showing both total spent and platform fees)
+      const revenueByStudent = await this.all(`
+        SELECT 
+          us.name as student_name,
+          COUNT(*) as lesson_count,
+          SUM(l.total_cost) as total_spent,
+          SUM(p.platform_fee) as platform_fee
+        FROM lessons l
+        JOIN payments p ON l.id = p.lesson_id
+        JOIN students s ON l.student_id = s.studentID
+        JOIN users us ON s.user_id = us.id
+        WHERE l.status IN ('upcoming', 'completed') 
+        AND p.status = 'completed'
+        GROUP BY us.name, s.studentID
+        HAVING SUM(p.platform_fee) > 0
+        ORDER BY platform_fee DESC
+        LIMIT 10
+      `);
+
+      // Get revenue by quarter (using platform fees from payments table)
       const currentYear = new Date().getFullYear();
       const quarterlyRevenue = await this.all(`
         SELECT 
           CASE 
-            WHEN strftime('%m', lesson_date) IN ('01', '02', '03') THEN 'Q1'
-            WHEN strftime('%m', lesson_date) IN ('04', '05', '06') THEN 'Q2'
-            WHEN strftime('%m', lesson_date) IN ('07', '08', '09') THEN 'Q3'
-            WHEN strftime('%m', lesson_date) IN ('10', '11', '12') THEN 'Q4'
+            WHEN strftime('%m', p.payment_date) IN ('01', '02', '03') THEN 'Q1'
+            WHEN strftime('%m', p.payment_date) IN ('04', '05', '06') THEN 'Q2'
+            WHEN strftime('%m', p.payment_date) IN ('07', '08', '09') THEN 'Q3'
+            WHEN strftime('%m', p.payment_date) IN ('10', '11', '12') THEN 'Q4'
           END as quarter,
-          SUM(total_cost) as revenue
-        FROM lessons
-        WHERE strftime('%Y', lesson_date) = ? AND status IN ('upcoming', 'completed')
+          SUM(p.platform_fee) as revenue
+        FROM payments p
+        JOIN lessons l ON p.lesson_id = l.id
+        WHERE strftime('%Y', p.payment_date) = ? AND p.status = 'completed'
         GROUP BY quarter
         ORDER BY quarter
       `, [currentYear.toString()]);
@@ -629,12 +662,93 @@ class Database {
         lessons: lessonCounts,
         revenue: revenueData,
         popularInstruments,
+        revenueByStudent,
         quarterlyRevenue,
         recentLessons,
         repeatStudents: repeatStudents.repeat_students
       };
     } catch (error) {
       console.error('Error getting admin dashboard data:', error);
+      throw error;
+    }
+  }
+
+  // Get referral report data
+  async getReferralReport() {
+    try {
+      const referralData = await this.all(`
+        SELECT 
+          referral_source,
+          COUNT(*) as count
+        FROM students 
+        WHERE referral_source IS NOT NULL
+        GROUP BY referral_source
+        ORDER BY count DESC
+      `);
+
+      // Format the data for the chart
+      const chartData = {
+        labels: [],
+        data: []
+      };
+
+      referralData.forEach(item => {
+        let label;
+        switch(item.referral_source) {
+          case 'online_advertisement':
+            label = 'Online Advertisement';
+            break;
+          case 'word_of_mouth':
+            label = 'Word of Mouth';
+            break;
+          case 'other':
+            label = 'Other';
+            break;
+          default:
+            label = item.referral_source;
+        }
+        chartData.labels.push(label);
+        chartData.data.push(item.count);
+      });
+
+      return chartData;
+    } catch (error) {
+      console.error('Error getting referral report data:', error);
+      throw error;
+    }
+  }
+
+  // Get repeat lessons report data
+  async getRepeatLessonsReport() {
+    try {
+      const repeatData = await this.all(`
+        SELECT 
+          u.name as student_name,
+          COUNT(*) as lesson_count
+        FROM lessons l
+        JOIN students s ON l.student_id = s.studentID
+        JOIN users u ON s.user_id = u.id
+        WHERE l.status IN ('upcoming', 'completed')
+        GROUP BY u.name, s.studentID
+        HAVING COUNT(*) > 1
+        ORDER BY lesson_count DESC
+        LIMIT 10
+      `);
+
+      // Format the data for the chart
+      const chartData = {
+        labels: [],
+        data: []
+      };
+
+      repeatData.forEach(item => {
+        chartData.labels.push(item.student_name);
+        chartData.data.push(item.lesson_count);
+      });
+
+      return chartData;
+    } catch (error) {
+      console.error('Error getting repeat lessons report data:', error);
       throw error;
     }
   }

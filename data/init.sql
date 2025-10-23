@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS students (
     primary_instrument TEXT,
     skill_level TEXT CHECK(skill_level IN ('beginner', 'intermediate', 'advanced')),
     learning_goals TEXT,
+    referral_source TEXT CHECK(referral_source IN ('online_advertisement', 'word_of_mouth', 'other')),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -70,6 +71,7 @@ CREATE TABLE IF NOT EXISTS availability (
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
     lesson_type TEXT CHECK(lesson_type IN ('virtual', 'in-person')),
+    instruments TEXT, -- JSON array of available instruments
     is_available BOOLEAN DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(teacher_id, available_date, start_time)

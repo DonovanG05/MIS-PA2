@@ -10,7 +10,12 @@ let dashboardData = null;
 document.addEventListener('DOMContentLoaded', function() {
   console.log('Admin portal loaded, starting data fetch...');
   loadDashboardData();
-  loadTransactions();
+  
+  // Add a small delay to ensure DOM is fully ready
+  setTimeout(() => {
+    console.log('Loading transactions after delay...');
+    loadTransactions();
+  }, 100);
 });
 
 // Load dashboard data from API
@@ -50,6 +55,7 @@ async function loadTransactions() {
     
     if (result.success) {
       console.log('Transactions data loaded:', result);
+      console.log('Revenue data:', result.revenue);
       renderTransactions(result.payments, result.revenue);
     } else {
       console.error('Failed to load transactions:', result.message);
@@ -66,9 +72,14 @@ function renderTransactions(payments, revenue) {
   // Update revenue summary
   if (revenue) {
     console.log('Updating revenue summary with:', revenue);
-    const totalRevenueElement = document.getElementById('totalRevenue');
-    if (totalRevenueElement) {
-      totalRevenueElement.textContent = `$${revenue.total_revenue ? revenue.total_revenue.toFixed(2) : '0.00'}`;
+    const platformRevenueElement = document.getElementById('platformRevenue');
+    console.log('platformRevenueElement found:', !!platformRevenueElement);
+    if (platformRevenueElement) {
+      const revenueAmount = revenue.total_revenue ? revenue.total_revenue.toFixed(2) : '0.00';
+      console.log('Setting platform revenue to:', revenueAmount);
+      platformRevenueElement.textContent = `$${revenueAmount}`;
+    } else {
+      console.error('platformRevenue element not found!');
     }
     const totalTransactionsElement = document.getElementById('totalTransactions');
     if (totalTransactionsElement) {
@@ -123,14 +134,23 @@ function initializeDashboard() {
   const totalUsers = dashboardData.users.total_users || 0;
   const totalBookings = dashboardData.lessons.total_lessons || 0;
   const repeatStudents = dashboardData.repeatStudents || 0;
-  const totalRevenue = dashboardData.revenue.total_revenue || 0;
   
-  console.log('Updating stats:', { totalUsers, totalBookings, repeatStudents, totalRevenue });
+  console.log('Updating stats:', { totalUsers, totalBookings, repeatStudents });
   
-  document.getElementById('totalUsers').textContent = totalUsers;
-  document.getElementById('totalBookings').textContent = totalBookings;
-  document.getElementById('repeatStudents').textContent = repeatStudents;
-  document.getElementById('totalRevenue').textContent = `$${totalRevenue.toLocaleString()}`;
+  // Update elements
+  const totalUsersEl = document.getElementById('totalUsers');
+  const totalBookingsEl = document.getElementById('totalBookings');
+  const repeatStudentsEl = document.getElementById('repeatStudents');
+  
+  console.log('Elements found:', {
+    totalUsers: !!totalUsersEl,
+    totalBookings: !!totalBookingsEl,
+    repeatStudents: !!repeatStudentsEl
+  });
+  
+  if (totalUsersEl) totalUsersEl.textContent = totalUsers;
+  if (totalBookingsEl) totalBookingsEl.textContent = totalBookings;
+  if (repeatStudentsEl) repeatStudentsEl.textContent = repeatStudents;
 }
 
 function initializeCharts() {
@@ -140,17 +160,19 @@ function initializeCharts() {
   const revenueCtx = document.getElementById('revenueBarChart').getContext('2d');
   
   // Process quarterly revenue data
+  console.log('Quarterly revenue data:', dashboardData.quarterlyRevenue);
   const quarterlyData = {};
   dashboardData.quarterlyRevenue.forEach(q => {
     quarterlyData[q.quarter] = q.revenue || 0;
   });
+  console.log('Processed quarterly data:', quarterlyData);
   
   charts.revenue = new Chart(revenueCtx, {
     type: 'bar',
     data: {
       labels: ['Q1', 'Q2', 'Q3', 'Q4'],
       datasets: [{
-        label: 'Revenue ($)',
+        label: 'Platform Revenue ($)',
         data: [
           quarterlyData.Q1 || 0,
           quarterlyData.Q2 || 0,
@@ -177,35 +199,52 @@ function initializeCharts() {
     }
   });
 
-  // Referral Pie Chart (placeholder - no referral tracking in database yet)
+  // Referral Bar Chart
   const referralCtx = document.getElementById('referralChart').getContext('2d');
-  const referralData = {
-    'No Data Available': 100
-  };
   
-  charts.referral = new Chart(referralCtx, {
-    type: 'doughnut',
-    data: {
-      labels: Object.keys(referralData),
-      datasets: [{
-        data: Object.values(referralData),
-        backgroundColor: [
-          '#FF6384',
-          '#36A2EB',
-          '#FFCE56',
-          '#4BC0C0',
-          '#9966FF'
-        ]
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: {
-          position: 'bottom'
+  // Load referral data
+  loadReferralData().then(referralData => {
+    charts.referral = new Chart(referralCtx, {
+      type: 'bar',
+      data: {
+        labels: referralData.labels,
+        datasets: [{
+          label: 'Number of Students',
+          data: referralData.data,
+          backgroundColor: [
+            '#FF6384',
+            '#36A2EB',
+            '#FFCE56',
+            '#4BC0C0',
+            '#9966FF'
+          ],
+          borderColor: [
+            '#FF6384',
+            '#36A2EB',
+            '#FFCE56',
+            '#4BC0C0',
+            '#9966FF'
+          ],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              stepSize: 1
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            display: false
+          }
         }
       }
-    }
+    });
   });
 
   // Popular Instruments Chart
@@ -236,6 +275,72 @@ function initializeCharts() {
     }
   });
 
+  // Repeat Lessons Bar Chart
+  const repeatLessonsCtx = document.getElementById('repeatLessonsChart').getContext('2d');
+  
+  // Load repeat lessons data
+  loadRepeatLessonsData().then(repeatData => {
+    charts.repeatLessons = new Chart(repeatLessonsCtx, {
+      type: 'bar',
+      data: {
+        labels: repeatData.labels,
+        datasets: [{
+          label: 'Number of Lessons',
+          data: repeatData.data,
+          backgroundColor: [
+            '#FF6384',
+            '#36A2EB',
+            '#FFCE56',
+            '#4BC0C0',
+            '#9966FF',
+            '#FF9F40',
+            '#4BC0C0',
+            '#9966FF',
+            '#FF6384',
+            '#36A2EB'
+          ],
+          borderColor: [
+            '#FF6384',
+            '#36A2EB',
+            '#FFCE56',
+            '#4BC0C0',
+            '#9966FF',
+            '#FF9F40',
+            '#4BC0C0',
+            '#9966FF',
+            '#FF6384',
+            '#36A2EB'
+          ],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              stepSize: 1
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const value = context.parsed.y;
+                return `${context.label}: ${value} lesson${value > 1 ? 's' : ''}`;
+              }
+            }
+          }
+        }
+      }
+    });
+  });
+
   // Revenue by Instrument Chart
   const revenueInstrumentCtx = document.getElementById('revenueByInstrumentChart').getContext('2d');
   
@@ -261,28 +366,123 @@ function initializeCharts() {
       responsive: true,
       plugins: {
         legend: {
-          position: 'bottom'
+          position: 'bottom',
+          labels: {
+            generateLabels: function(chart) {
+              const data = chart.data;
+              if (data.labels.length && data.datasets.length) {
+                const dataset = data.datasets[0];
+                const total = dataset.data.reduce((a, b) => a + b, 0);
+                
+                return data.labels.map((label, index) => {
+                  const value = dataset.data[index];
+                  const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                  
+                  return {
+                    text: `${label}: $${value} (${percentage}%)`,
+                    fillStyle: dataset.backgroundColor[index],
+                    strokeStyle: dataset.backgroundColor[index],
+                    lineWidth: 0,
+                    hidden: false,
+                    index: index
+                  };
+                });
+              }
+              return [];
+            }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const label = context.label || '';
+              const value = context.parsed;
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+              
+              return `${label}: $${value} (${percentage}%)`;
+            }
+          }
         }
       }
     }
   });
 
-  // Revenue by Student Chart (placeholder - would need student revenue aggregation)
+  // Revenue by Student Chart
   const revenueStudentCtx = document.getElementById('revenueByStudentChart').getContext('2d');
+  
+  const revenueStudentLabels = dashboardData.revenueByStudent.map(student => student.student_name);
+  const revenueStudentData = dashboardData.revenueByStudent.map(student => student.platform_fee);
+  
   charts.revenueByStudent = new Chart(revenueStudentCtx, {
-    type: 'doughnut',
+    type: 'pie',
     data: {
-      labels: ['No Data Available'],
+      labels: revenueStudentLabels,
       datasets: [{
-        data: [100],
-        backgroundColor: ['#FF6384']
+        data: revenueStudentData,
+        backgroundColor: [
+          '#FF6384',
+          '#36A2EB',
+          '#FFCE56',
+          '#4BC0C0',
+          '#9966FF',
+          '#FF9F40',
+          '#4BC0C0',
+          '#9966FF',
+          '#FF6384',
+          '#36A2EB'
+        ]
       }]
     },
     options: {
       responsive: true,
       plugins: {
         legend: {
-          position: 'bottom'
+          position: 'bottom',
+          labels: {
+            generateLabels: function(chart) {
+              const data = chart.data;
+              if (data.labels.length && data.datasets.length) {
+                const dataset = data.datasets[0];
+                const total = dataset.data.reduce((a, b) => a + b, 0);
+                
+                return data.labels.map((label, index) => {
+                  const value = dataset.data[index];
+                  const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                  
+                  return {
+                    text: `${label}: $${value} (${percentage}%)`,
+                    fillStyle: dataset.backgroundColor[index],
+                    strokeStyle: dataset.backgroundColor[index],
+                    lineWidth: 0,
+                    hidden: false,
+                    index: index
+                  };
+                });
+              }
+              return [];
+            }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const label = context.label || '';
+              const value = context.parsed;
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+              
+              // Get the full student data for additional info
+              const studentIndex = context.dataIndex;
+              const studentData = dashboardData.revenueByStudent[studentIndex];
+              
+              return [
+                `${label}: $${value} platform fee (${percentage}%)`,
+                `Total spent: $${studentData.total_spent}`,
+                `Lessons: ${studentData.lesson_count}`
+              ];
+            }
+          }
         }
       }
     }
@@ -387,6 +587,9 @@ function generateCalendar() {
     
     if (lessonsOnDate.length > 0) {
       dayElement.classList.add('has-lessons');
+      dayElement.style.cursor = 'pointer';
+      dayElement.addEventListener('click', () => showLessonDetails(dateString, lessonsOnDate));
+      
       const lessonCount = document.createElement('div');
       lessonCount.className = 'lesson-count';
       lessonCount.textContent = lessonsOnDate.length;
@@ -547,3 +750,113 @@ document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
     }
   });
 });
+
+// Load referral data from API
+async function loadReferralData() {
+  try {
+    const response = await fetch('/api/admin/referral-report');
+    const result = await response.json();
+    
+    if (result.success) {
+      return result.data;
+    } else {
+      console.error('Failed to load referral data:', result.message);
+      return { labels: ['No Data'], data: [0] };
+    }
+  } catch (error) {
+    console.error('Error loading referral data:', error);
+    return { labels: ['No Data'], data: [0] };
+  }
+}
+
+async function loadRepeatLessonsData() {
+  try {
+    const response = await fetch('/api/admin/repeat-lessons-report');
+    const result = await response.json();
+    
+    if (result.success) {
+      return result.data;
+    } else {
+      console.error('Failed to load repeat lessons data:', result.message);
+      return { labels: ['No Data'], data: [0] };
+    }
+  } catch (error) {
+    console.error('Error loading repeat lessons data:', error);
+    return { labels: ['No Data'], data: [0] };
+  }
+}
+
+// Show lesson details modal
+function showLessonDetails(dateString, lessons) {
+  const modal = new bootstrap.Modal(document.getElementById('lessonDetailsModal'));
+  const content = document.getElementById('lessonDetailsContent');
+  
+  // Format the date
+  const date = new Date(dateString);
+  const formattedDate = date.toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+  
+  // Generate lesson details HTML
+  let html = `
+    <div class="mb-3">
+      <h6 class="text-primary">${formattedDate}</h6>
+      <p class="text-muted">${lessons.length} lesson${lessons.length > 1 ? 's' : ''} scheduled</p>
+    </div>
+    <div class="row">
+  `;
+  
+  lessons.forEach((lesson, index) => {
+    const statusBadge = getStatusBadge(lesson.status);
+    const lessonTypeBadge = getLessonTypeBadge(lesson.lesson_type);
+    
+    html += `
+      <div class="col-md-6 mb-3">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <h6 class="card-title mb-0">${lesson.teacher_name}</h6>
+              ${statusBadge}
+            </div>
+            <p class="card-text mb-1">
+              <strong>Student:</strong> ${lesson.student_name || 'Unknown'}<br>
+              <strong>Instrument:</strong> ${lesson.instrument || 'N/A'}<br>
+              <strong>Time:</strong> ${lesson.lesson_time}<br>
+              <strong>Duration:</strong> ${lesson.duration} minutes<br>
+              <strong>Type:</strong> ${lessonTypeBadge}<br>
+              <strong>Cost:</strong> $${lesson.total_cost || '0.00'}
+            </p>
+            ${lesson.notes ? `<p class="card-text"><small class="text-muted"><strong>Notes:</strong> ${lesson.notes}</small></p>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  
+  html += '</div>';
+  
+  content.innerHTML = html;
+  modal.show();
+}
+
+// Helper function to get status badge
+function getStatusBadge(status) {
+  const badges = {
+    'upcoming': '<span class="badge bg-primary">Upcoming</span>',
+    'completed': '<span class="badge bg-success">Completed</span>',
+    'cancelled': '<span class="badge bg-danger">Cancelled</span>'
+  };
+  return badges[status] || '<span class="badge bg-secondary">Unknown</span>';
+}
+
+// Helper function to get lesson type badge
+function getLessonTypeBadge(type) {
+  const badges = {
+    'virtual': '<span class="badge bg-info">Virtual</span>',
+    'in-person': '<span class="badge bg-warning">In-Person</span>'
+  };
+  return badges[type] || '<span class="badge bg-secondary">Unknown</span>';
+}

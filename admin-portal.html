@@ -78,7 +78,7 @@
               
               <!-- Stats Cards -->
               <div class="row mb-4">
-                <div class="col-md-3">
+                <div class="col-md-4">
                   <div class="card bg-primary text-white">
                     <div class="card-body">
                       <div class="d-flex justify-content-between">
@@ -93,7 +93,7 @@
                     </div>
                   </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                   <div class="card bg-success text-white">
                     <div class="card-body">
                       <div class="d-flex justify-content-between">
@@ -108,7 +108,7 @@
                     </div>
                   </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                   <div class="card bg-warning text-white">
                     <div class="card-body">
                       <div class="d-flex justify-content-between">
@@ -118,21 +118,6 @@
                         </div>
                         <div class="align-self-center">
                           <i class="bi bi-arrow-repeat fs-1"></i>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-md-3">
-                  <div class="card bg-info text-white">
-                    <div class="card-body">
-                      <div class="d-flex justify-content-between">
-                        <div>
-                          <h4 class="card-title">Total Revenue</h4>
-                          <h2 class="mb-0" id="dashboardTotalRevenue">$0</h2>
-                        </div>
-                        <div class="align-self-center">
-                          <i class="bi bi-currency-dollar fs-1"></i>
                         </div>
                       </div>
                     </div>
@@ -178,7 +163,7 @@
                 <div class="col-12">
                   <div class="card">
                     <div class="card-header">
-                      <h5 class="mb-0">Revenue Report - Quarterly Breakdown</h5>
+                      <h5 class="mb-0">Platform Revenue Report - Quarterly Breakdown (10% Fees)</h5>
                     </div>
                     <div class="card-body">
                       <canvas id="revenueBarChart" width="400" height="200"></canvas>
@@ -189,7 +174,7 @@
 
               <!-- Referral Report -->
               <div class="row mb-4">
-                <div class="col-md-6">
+                <div class="col-md-4">
                   <div class="card">
                     <div class="card-header">
                       <h5 class="mb-0">Referral Report - How Students Heard About Us</h5>
@@ -199,13 +184,23 @@
                     </div>
                   </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
                   <div class="card">
                     <div class="card-header">
                       <h5 class="mb-0">Popular Instruments Report</h5>
                     </div>
                     <div class="card-body">
                       <canvas id="popularInstrumentsReportChart" width="400" height="300"></canvas>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="card">
+                    <div class="card-header">
+                      <h5 class="mb-0">Repeat Lessons Report - Student Loyalty</h5>
+                    </div>
+                    <div class="card-body">
+                      <canvas id="repeatLessonsChart" width="400" height="300"></canvas>
                     </div>
                   </div>
                 </div>
@@ -361,20 +356,20 @@
               <!-- Revenue Summary -->
               <div class="row mb-4">
                 <div class="col-md-4">
-                  <div class="card bg-primary text-white">
-                    <div class="card-body text-center">
-                      <h4 class="card-title">Total Revenue</h4>
-                      <h2 class="mb-0" id="totalRevenue">$0.00</h2>
-                      <p class="mb-0">Platform earnings</p>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-md-4">
                   <div class="card bg-success text-white">
                     <div class="card-body text-center">
                       <h4 class="card-title">Total Transactions</h4>
                       <h2 class="mb-0" id="totalTransactions">0</h2>
                       <p class="mb-0">Completed payments</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                      <h4 class="card-title">Platform Revenue</h4>
+                      <h2 class="mb-0" id="platformRevenue">$0.00</h2>
+                      <p class="mb-0">10% platform fees</p>
                     </div>
                   </div>
                 </div>
@@ -435,6 +430,26 @@
       integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
       crossorigin="anonymous"
     ></script>
+
+    <!-- Lesson Details Modal -->
+    <div class="modal fade" id="lessonDetailsModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Lesson Details</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div id="lessonDetailsContent">
+              <!-- Lesson details will be populated here -->
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Custom JS -->
     <script src="./scripts/admin-portal.js"></script>

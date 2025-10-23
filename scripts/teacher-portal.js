@@ -235,6 +235,7 @@ async function loadAvailability() {
         duration: Math.round((new Date(`2000-01-01T${avail.end_time}`) - new Date(`2000-01-01T${avail.start_time}`)) / 60000),
         virtual: avail.lesson_type === 'virtual',
         inPerson: avail.lesson_type === 'in-person',
+        instruments: avail.instruments ? JSON.parse(avail.instruments) : [],
         status: 'Available'
       }));
       updateAvailabilityTable();
@@ -258,9 +259,16 @@ async function addAvailability() {
   const duration = parseInt(document.getElementById('duration').value);
   const virtual = document.getElementById('modalVirtual').checked;
   const inPerson = document.getElementById('modalInPerson').checked;
+  const instrumentsSelect = document.getElementById('availableInstruments');
+  const selectedInstruments = Array.from(instrumentsSelect.selectedOptions).map(option => option.value);
   
   if (!virtual && !inPerson) {
     alert('Please select at least one lesson type.');
+    return;
+  }
+  
+  if (selectedInstruments.length === 0) {
+    alert('Please select at least one instrument.');
     return;
   }
   
@@ -290,7 +298,8 @@ async function addAvailability() {
             available_date: date,
             start_time: startTime,
             end_time: endTime,
-            lesson_type: 'virtual'
+            lesson_type: 'virtual',
+            instruments: selectedInstruments
           })
         })
       );
@@ -306,7 +315,8 @@ async function addAvailability() {
             available_date: date,
             start_time: startTime,
             end_time: endTime,
-            lesson_type: 'in-person'
+            lesson_type: 'in-person',
+            instruments: selectedInstruments
           })
         })
       );
@@ -375,7 +385,7 @@ function updateAvailabilityTable() {
   const tbody = document.querySelector('#availabilityTable tbody');
   
   if (availability.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No availability scheduled</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No availability scheduled</td></tr>';
     return;
   }
   
@@ -385,6 +395,9 @@ function updateAvailabilityTable() {
       <td>${formatTime(item.startTime)}</td>
       <td>${formatTime(item.endTime)}</td>
       <td>${item.duration} min</td>
+      <td>
+        ${item.instruments.map(inst => `<span class="badge bg-info me-1">${inst}</span>`).join('')}
+      </td>
       <td><span class="badge bg-success">${item.status}</span></td>
       <td>
         <button class="btn btn-sm btn-outline-danger" onclick="removeAvailability(${item.id})">
@@ -493,18 +506,36 @@ async function loadBookedLessons() {
     
     if (result.success) {
       const previousCount = bookedLessons ? bookedLessons.length : 0;
-      bookedLessons = result.lessons.map(lesson => ({
-        id: lesson.id,
-        date: lesson.lesson_date,
-        time: lesson.lesson_time,
-        student: lesson.student_name,
-        instrument: lesson.instrument,
-        type: lesson.lesson_type,
-        duration: lesson.duration,
-        revenue: lesson.teacher_earnings,
-        status: lesson.status,
-        notes: lesson.notes
-      }));
+      bookedLessons = result.lessons.map(lesson => {
+        // Safely parse sheet_music_urls
+        let sheetMusicUrls = [];
+        try {
+          if (lesson.sheet_music_urls) {
+            if (typeof lesson.sheet_music_urls === 'string') {
+              sheetMusicUrls = JSON.parse(lesson.sheet_music_urls);
+            } else if (Array.isArray(lesson.sheet_music_urls)) {
+              sheetMusicUrls = lesson.sheet_music_urls;
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing sheet_music_urls:', error);
+          sheetMusicUrls = [];
+        }
+        
+        return {
+          id: lesson.id,
+          date: lesson.lesson_date,
+          time: lesson.lesson_time,
+          student: lesson.student_name,
+          instrument: lesson.instrument,
+          type: lesson.lesson_type,
+          duration: lesson.duration,
+          revenue: lesson.teacher_earnings,
+          status: lesson.status,
+          notes: lesson.notes,
+          sheet_music_urls: sheetMusicUrls
+        };
+      });
       
       console.log('Processed lessons:', bookedLessons);
       updateLessonsTable();
@@ -814,7 +845,7 @@ function updateLessonsTable() {
   }
   
   if (bookedLessons.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No lessons booked</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No lessons booked</td></tr>';
     return;
   }
   
@@ -827,6 +858,37 @@ function updateLessonsTable() {
       <td>${lesson.duration}</td>
       <td>$${lesson.revenue}</td>
       <td><span class="badge bg-${lesson.status === 'upcoming' ? 'warning' : lesson.status === 'completed' ? 'success' : 'danger'}">${lesson.status}</span></td>
+      <td>
+        ${(() => {
+          try {
+            // Ensure sheet_music_urls is an array
+            let sheetMusicUrls = lesson.sheet_music_urls;
+            if (typeof sheetMusicUrls === 'string') {
+              sheetMusicUrls = JSON.parse(sheetMusicUrls);
+            }
+            if (!Array.isArray(sheetMusicUrls)) {
+              sheetMusicUrls = [];
+            }
+            
+            if (sheetMusicUrls.length > 0) {
+              return `
+                <div class="d-flex flex-wrap gap-1">
+                  ${sheetMusicUrls.map((url, index) => `
+                    <a href="${url}" target="_blank" class="btn btn-outline-primary btn-sm" title="View sheet music">
+                      <i class="bi bi-file-music me-1"></i>File ${index + 1}
+                    </a>
+                  `).join('')}
+                </div>
+              `;
+            } else {
+              return '<span class="text-muted">None</span>';
+            }
+          } catch (error) {
+            console.error('Error processing sheet music URLs:', error);
+            return '<span class="text-muted">Error loading files</span>';
+          }
+        })()}
+      </td>
       <td>
         ${lesson.status === 'upcoming' ? `
           <button class="btn btn-success btn-sm" onclick="openCompleteLessonModal(${lesson.id}, '${lesson.student}', '${lesson.instrument}', '${lesson.date}', '${lesson.time}')">

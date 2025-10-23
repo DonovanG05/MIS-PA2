@@ -236,7 +236,12 @@ function renderAvailabilityTable(availability) {
       <td>${formatDate(slot.available_date)}</td>
       <td>${slot.start_time}</td>
       <td>${slot.teacher_name}</td>
-      <td>${capitalizeFirst(slot.instrument || 'Mixed')}</td>
+      <td>
+        ${slot.instruments && slot.instruments.length > 0 
+          ? slot.instruments.map(inst => capitalizeFirst(inst)).join(', ')
+          : 'Multiple Available'
+        }
+      </td>
       <td>60 min</td>
       <td>$${slot.rate_per_hour}</td>
       <td>
@@ -257,11 +262,29 @@ function openBookingModal(slotId) {
   
   // Populate modal with slot data
   document.getElementById('bookingTeacher').value = slot.teacher_name;
-  document.getElementById('bookingInstrument').value = capitalizeFirst(slot.instrument || 'Mixed');
   document.getElementById('bookingDate').value = slot.available_date;
   document.getElementById('bookingTime').value = slot.start_time;
   document.getElementById('bookingDuration').value = 60;
   document.getElementById('bookingType').value = slot.lesson_type;
+  
+  // Populate instrument dropdown with available instruments
+  const instrumentSelect = document.getElementById('bookingInstrument');
+  instrumentSelect.innerHTML = '<option value="">Select instrument</option>';
+  
+  if (slot.instruments && slot.instruments.length > 0) {
+    slot.instruments.forEach(instrument => {
+      const option = document.createElement('option');
+      option.value = instrument;
+      option.textContent = capitalizeFirst(instrument);
+      instrumentSelect.appendChild(option);
+    });
+  } else {
+    // Fallback for old data without instruments
+    const option = document.createElement('option');
+    option.value = 'general';
+    option.textContent = 'General Music Lesson';
+    instrumentSelect.appendChild(option);
+  }
   
   // Show modal
   const modal = new bootstrap.Modal(document.getElementById('bookingModal'));
@@ -326,20 +349,39 @@ async function confirmBooking() {
     status: 'upcoming'
   };
   
+  // Handle file uploads
+  const sheetMusicFiles = document.getElementById('sheetMusic').files;
+  
   try {
-    // Book lesson via API
+    // Create FormData for file upload
+    const formData = new FormData();
+    
+    // Add booking data
+    Object.keys(bookingData).forEach(key => {
+      formData.append(key, bookingData[key]);
+    });
+    
+    // Add sheet music files
+    if (sheetMusicFiles && sheetMusicFiles.length > 0) {
+      Array.from(sheetMusicFiles).forEach(file => {
+        formData.append('sheetMusic', file);
+      });
+    }
+    
+    // Book lesson via API with file upload
     const response = await fetch('/api/lessons/book', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(bookingData)
+      body: formData // Don't set Content-Type header, let browser set it with boundary
     });
     
     const result = await response.json();
     
     if (result.success) {
-      showAlert('Lesson booked successfully!', 'success');
+      let message = 'Lesson booked successfully!';
+      if (result.uploaded_files > 0) {
+        message += ` ${result.uploaded_files} sheet music file(s) uploaded.`;
+      }
+      showAlert(message, 'success');
       
       // Close modal
       const modal = bootstrap.Modal.getInstance(document.getElementById('bookingModal'));
@@ -438,9 +480,12 @@ function showDayAvailability(date) {
   }
   
   // Show availability in a simple format
-  const availabilityText = dayAvailability.map(slot => 
-    `${slot.start_time} - ${slot.teacher_name} (${slot.instrument || 'Mixed'}) - $${slot.rate_per_hour}`
-  ).join('\n');
+  const availabilityText = dayAvailability.map(slot => {
+    const instruments = slot.instruments && slot.instruments.length > 0 
+      ? slot.instruments.map(inst => capitalizeFirst(inst)).join(', ')
+      : 'Multiple Available';
+    return `${slot.start_time} - ${slot.teacher_name} (${instruments}) - $${slot.rate_per_hour}`;
+  }).join('\n');
   
   alert(`Availability for ${formatDate(date)}:\n\n${availabilityText}`);
 }

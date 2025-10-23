@@ -2,6 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const multer = require('multer');
 const Database = require('./scripts/database');
 
 const app = express();
@@ -12,6 +13,37 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' })); // Increase payload limit for large images
 app.use(express.urlencoded({ limit: '50mb', extended: true })); // For form data
 app.use(express.static('.'));
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
+  },
+  filename: function (req, file, cb) {
+    // Generate unique filename with timestamp
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: function (req, file, cb) {
+    // Allow only PDF, JPG, JPEG, PNG files
+    const allowedTypes = /jpeg|jpg|png|pdf/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only PDF, JPG, JPEG, and PNG files are allowed'));
+    }
+  }
+});
 
 // Initialize database
 const db = new Database();
@@ -125,7 +157,7 @@ app.post('/api/signup/teacher', async (req, res) => {
 
 app.post('/api/signup/student', async (req, res) => {
   try {
-    const { name, email, password, phone, location, primary_instrument, skill_level, learning_goals } = req.body;
+    const { name, email, password, phone, location, primary_instrument, skill_level, learning_goals, referral_source } = req.body;
     
     // Create user first
     const userResult = await db.createUser({
@@ -142,7 +174,8 @@ app.post('/api/signup/student', async (req, res) => {
       user_id: userResult.id,
       primary_instrument,
       skill_level,
-      learning_goals
+      learning_goals,
+      referral_source
     });
     
     res.json({
@@ -188,8 +221,8 @@ app.get('/api/lessons/available', async (req, res) => {
   }
 });
 
-// Book a lesson
-app.post('/api/lessons/book', async (req, res) => {
+// Book a lesson with file upload support
+app.post('/api/lessons/book', upload.array('sheetMusic', 5), async (req, res) => {
   try {
     const lessonData = req.body;
     
@@ -204,12 +237,21 @@ app.post('/api/lessons/book', async (req, res) => {
     
     lessonData.rate_per_hour = teacher.rate_per_hour;
     
+    // Handle uploaded files
+    if (req.files && req.files.length > 0) {
+      const fileUrls = req.files.map(file => `/uploads/${file.filename}`);
+      lessonData.sheet_music_urls = JSON.stringify(fileUrls);
+    } else {
+      lessonData.sheet_music_urls = JSON.stringify([]);
+    }
+    
     const result = await db.bookLesson(lessonData);
     
     res.json({
       success: true,
       message: 'Lesson booked successfully',
-      lesson_id: result.lastID
+      lesson_id: result.lastID,
+      uploaded_files: req.files ? req.files.length : 0
     });
   } catch (error) {
     console.error('Book lesson error:', error);
@@ -327,12 +369,12 @@ app.post('/api/cleanup-past-availability', async (req, res) => {
 // Add teacher availability
 app.post('/api/availability', async (req, res) => {
   try {
-    const { teacher_id, available_date, start_time, end_time, lesson_type } = req.body;
+    const { teacher_id, available_date, start_time, end_time, lesson_type, instruments } = req.body;
     
-    if (!teacher_id || !available_date || !start_time || !end_time || !lesson_type) {
+    if (!teacher_id || !available_date || !start_time || !end_time || !lesson_type || !instruments || instruments.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'All fields are required'
+        message: 'All fields are required including instruments'
       });
     }
     
@@ -341,7 +383,8 @@ app.post('/api/availability', async (req, res) => {
       available_date,
       start_time,
       end_time,
-      lesson_type
+      lesson_type,
+      instruments
     });
     
     res.json({
@@ -866,6 +909,42 @@ app.get('/api/admin/dashboard', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to get dashboard data',
+      error: error.message
+    });
+  }
+});
+
+// Get referral report data
+app.get('/api/admin/referral-report', async (req, res) => {
+  try {
+    const referralData = await db.getReferralReport();
+    res.json({
+      success: true,
+      data: referralData
+    });
+  } catch (error) {
+    console.error('Get referral report error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get referral report data',
+      error: error.message
+    });
+  }
+});
+
+// Get repeat lessons report data
+app.get('/api/admin/repeat-lessons-report', async (req, res) => {
+  try {
+    const repeatData = await db.getRepeatLessonsReport();
+    res.json({
+      success: true,
+      data: repeatData
+    });
+  } catch (error) {
+    console.error('Get repeat lessons report error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get repeat lessons report data',
       error: error.message
     });
   }
