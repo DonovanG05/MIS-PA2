@@ -47,26 +47,36 @@ const sampleLessons = [
 ];
 
 // Initialize page
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
   // Get user ID from URL parameters
   const urlParams = new URLSearchParams(window.location.search);
   currentUserId = urlParams.get('user_id');
   
+  console.log('Current URL:', window.location.href);
+  console.log('User ID from URL:', currentUserId);
+  
   if (currentUserId) {
-    loadTeacherDataFromAPI();
+    await loadTeacherDataFromAPI();
+    await loadAvailability();
+    await loadBankInfo();
+    await loadPaymentHistory();
   } else {
+    console.log('No user_id found in URL, loading sample data');
     loadTeacherData();
   }
   
   updatePricingSummary();
-  loadBookedLessons();
+  await loadBookedLessons();
 });
 
 async function loadTeacherDataFromAPI() {
   try {
+    console.log('Loading teacher data for user ID:', currentUserId);
     // Fetch teacher profile from API
     const response = await fetch(`/api/teacher/${currentUserId}/profile`);
+    console.log('API response status:', response.status);
     const result = await response.json();
+    console.log('API response data:', result);
     
     if (result.success) {
       teacherProfile = {
@@ -80,7 +90,7 @@ async function loadTeacherDataFromAPI() {
       };
       
       // Update pricing from profile data
-      pricing.rate = result.data.rate_per_hour || 60;
+      pricing.rate_per_hour = result.data.rate_per_hour || 60;
       pricing.virtual = result.data.virtual_available || false;
       pricing.inPerson = result.data.in_person_available || false;
       
@@ -134,7 +144,7 @@ function populateProfileForm() {
 }
 
 function populatePricingForm() {
-  document.getElementById('lessonRate').value = pricing.rate || '';
+  document.getElementById('lessonRate').value = pricing.rate_per_hour || '';
   document.getElementById('lessonDuration').value = pricing.duration || 60;
   document.getElementById('virtualLessons').checked = pricing.virtual !== false;
   document.getElementById('inPersonLessons').checked = pricing.inPerson !== false;
@@ -205,7 +215,38 @@ async function updateTeacherProfile() {
   }
 }
 
-function addAvailability() {
+async function loadAvailability() {
+  try {
+    const teacher = await getTeacherByUserId(currentUserId);
+    if (!teacher) {
+      console.log('Teacher not found for loading availability');
+      return;
+    }
+    
+    const response = await fetch(`/api/teacher/${teacher.teacherID}/availability`);
+    const result = await response.json();
+    
+    if (result.success) {
+      availability = result.availability.map(avail => ({
+        id: avail.id,
+        date: avail.available_date,
+        startTime: avail.start_time,
+        endTime: avail.end_time,
+        duration: Math.round((new Date(`2000-01-01T${avail.end_time}`) - new Date(`2000-01-01T${avail.start_time}`)) / 60000),
+        virtual: avail.lesson_type === 'virtual',
+        inPerson: avail.lesson_type === 'in-person',
+        status: 'Available'
+      }));
+      updateAvailabilityTable();
+    } else {
+      console.error('Failed to load availability:', result.message);
+    }
+  } catch (error) {
+    console.error('Error loading availability:', error);
+  }
+}
+
+async function addAvailability() {
   const form = document.getElementById('availabilityForm');
   if (!form.checkValidity()) {
     form.reportValidity();
@@ -228,26 +269,70 @@ function addAvailability() {
   const end = new Date(start.getTime() + duration * 60000);
   const endTime = end.toTimeString().slice(0, 5);
   
-  const availabilityData = {
-    id: Date.now(),
-    date: date,
-    startTime: startTime,
-    endTime: endTime,
-    duration: duration,
-    virtual: virtual,
-    inPerson: inPerson,
-    status: 'Available'
-  };
-  
-  availability.push(availabilityData);
-  updateAvailabilityTable();
+  try {
+    // Get teacher ID
+    const teacher = await getTeacherByUserId(currentUserId);
+    if (!teacher) {
+      alert('Teacher not found');
+      return;
+    }
+    
+    // Add availability for each lesson type selected
+    const promises = [];
+    
+    if (virtual) {
+      promises.push(
+        fetch('/api/availability', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            teacher_id: teacher.teacherID,
+            available_date: date,
+            start_time: startTime,
+            end_time: endTime,
+            lesson_type: 'virtual'
+          })
+        })
+      );
+    }
+    
+    if (inPerson) {
+      promises.push(
+        fetch('/api/availability', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            teacher_id: teacher.teacherID,
+            available_date: date,
+            start_time: startTime,
+            end_time: endTime,
+            lesson_type: 'in-person'
+          })
+        })
+      );
+    }
+    
+    const responses = await Promise.all(promises);
+    const results = await Promise.all(responses.map(r => r.json()));
+    
+    // Check if all requests were successful
+    const allSuccess = results.every(r => r.success);
+    if (allSuccess) {
+      showAlert('Availability added successfully!', 'success');
+      loadAvailability(); // Reload availability from server
+    } else {
+      alert('Error adding availability: ' + results.find(r => !r.success)?.message);
+    }
+    
+  } catch (error) {
+    console.error('Error adding availability:', error);
+    alert('Error adding availability: ' + error.message);
+  }
   
   // Close modal and reset form
   const modal = bootstrap.Modal.getInstance(document.getElementById('addAvailabilityModal'));
   modal.hide();
   form.reset();
-  
-  showAlert('Availability added successfully!', 'success');
 }
 
 function addQuickAvailability() {
@@ -316,7 +401,7 @@ function removeAvailability(id) {
   showAlert('Availability removed successfully!', 'success');
 }
 
-function savePricing() {
+async function savePricing() {
   const form = document.getElementById('pricingForm');
   if (!form.checkValidity()) {
     form.reportValidity();
@@ -324,37 +409,412 @@ function savePricing() {
   }
   
   const pricingData = {
-    rate: parseFloat(document.getElementById('lessonRate').value),
+    rate_per_hour: parseFloat(document.getElementById('lessonRate').value),
     duration: parseInt(document.getElementById('lessonDuration').value),
     virtual: document.getElementById('virtualLessons').checked,
     inPerson: document.getElementById('inPersonLessons').checked
   };
   
-  pricing = pricingData;
-  localStorage.setItem('teacherPricing', JSON.stringify(pricingData));
-  updatePricingSummary();
-  
-  showAlert('Pricing saved successfully!', 'success');
+  try {
+    const response = await fetch(`/api/teacher/${currentUserId}/profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(pricingData)
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      pricing = pricingData;
+      updatePricingSummary();
+      showAlert('Pricing saved successfully!', 'success');
+    } else {
+      showAlert('Failed to save pricing: ' + result.message, 'danger');
+    }
+  } catch (error) {
+    console.error('Error saving pricing:', error);
+    showAlert('Error saving pricing: ' + error.message, 'danger');
+  }
 }
 
 function updatePricingSummary() {
-  const rate = pricing.rate || 0;
+  const rate = pricing.rate_per_hour || 0;
   const teacherEarnings = rate * 0.9; // 90% after 10% commission
   
   document.getElementById('currentRate').textContent = `$${rate}`;
   document.getElementById('teacherEarnings').textContent = `$${teacherEarnings.toFixed(2)}`;
 }
 
-function loadBookedLessons() {
-  bookedLessons = [...sampleLessons];
-  updateLessonsTable();
+async function getTeacherByUserId(userId) {
+  try {
+    console.log('Getting teacher by user ID:', userId);
+    const response = await fetch(`/api/teacher/${userId}/profile`);
+    console.log('Teacher API response status:', response.status);
+    const result = await response.json();
+    console.log('Teacher API response data:', result);
+    
+    if (result.success) {
+      return result.data;
+    } else {
+      console.error('Failed to get teacher:', result.error);
+      return null;
+    }
+  } catch (error) {
+    console.error('Error getting teacher by user ID:', error);
+    return null;
+  }
+}
+
+async function loadBookedLessons() {
+  try {
+    console.log('Loading booked lessons...');
+    if (!currentUserId) {
+      console.log('No user ID available for loading lessons');
+      return;
+    }
+
+    // Get teacher ID from the teacher profile
+    const teacher = await getTeacherByUserId(currentUserId);
+    if (!teacher) {
+      console.log('Teacher not found');
+      return;
+    }
+
+    console.log('Teacher found:', teacher);
+    console.log('Fetching lessons for teacher ID:', teacher.teacherID);
+
+    // Fetch lessons from API
+    const response = await fetch(`/api/teacher/${teacher.teacherID}/lessons`);
+    const result = await response.json();
+    
+    console.log('API response:', result);
+    
+    if (result.success) {
+      const previousCount = bookedLessons ? bookedLessons.length : 0;
+      bookedLessons = result.lessons.map(lesson => ({
+        id: lesson.id,
+        date: lesson.lesson_date,
+        time: lesson.lesson_time,
+        student: lesson.student_name,
+        instrument: lesson.instrument,
+        type: lesson.lesson_type,
+        duration: lesson.duration,
+        revenue: lesson.teacher_earnings,
+        status: lesson.status,
+        notes: lesson.notes
+      }));
+      
+      console.log('Processed lessons:', bookedLessons);
+      updateLessonsTable();
+      
+      // Show notification if new lessons were added
+      if (bookedLessons.length > previousCount && previousCount > 0) {
+        showNotification('New lesson booking received!', 'success');
+      }
+    } else {
+      console.error('Failed to load lessons:', result.message);
+      bookedLessons = [];
+      updateLessonsTable();
+    }
+  } catch (error) {
+    console.error('Error loading lessons:', error);
+    bookedLessons = [];
+    updateLessonsTable();
+  }
+}
+
+async function refreshLessons() {
+  const refreshBtn = document.querySelector('button[onclick="refreshLessons()"]');
+  if (refreshBtn) {
+    refreshBtn.disabled = true;
+    refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Refreshing...';
+  }
+  
+  await loadBookedLessons();
+  
+  if (refreshBtn) {
+    refreshBtn.disabled = false;
+    refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Refresh';
+  }
+}
+
+function showNotification(message, type = 'info') {
+  // Create notification element
+  const notification = document.createElement('div');
+  notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+  notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+  notification.innerHTML = `
+    ${message}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  `;
+  
+  // Add to page
+  document.body.appendChild(notification);
+  
+  // Auto-remove after 5 seconds
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.remove();
+    }
+  }, 5000);
+}
+
+// Add CSS for spinning animation
+const style = document.createElement('style');
+style.textContent = `
+  .spin {
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+`;
+document.head.appendChild(style);
+
+// LESSON COMPLETION FUNCTIONS
+
+let currentLessonId = null;
+
+// Open lesson completion modal
+function openCompleteLessonModal(lessonId, studentName, instrument, date, time) {
+  currentLessonId = lessonId;
+  
+  // Populate modal with lesson details
+  document.getElementById('completionStudentName').textContent = studentName;
+  document.getElementById('completionInstrument').textContent = instrument;
+  document.getElementById('completionDate').textContent = formatDate(date);
+  document.getElementById('completionTime').textContent = time;
+  
+  // Clear form
+  document.getElementById('completionNotes').value = '';
+  document.getElementById('studentRating').value = '';
+  document.getElementById('teacherRating').value = '';
+  
+  // Show modal
+  const modal = new bootstrap.Modal(document.getElementById('completeLessonModal'));
+  modal.show();
+}
+
+// Complete lesson
+async function completeLesson() {
+  if (!currentLessonId || !currentUserId) return;
+
+  const completionNotes = document.getElementById('completionNotes').value;
+  const studentRating = document.getElementById('studentRating').value;
+  const teacherRating = document.getElementById('teacherRating').value;
+
+  // Get teacher ID
+  const teacher = await getTeacherByUserId(currentUserId);
+  if (!teacher) {
+    showNotification('Teacher not found', 'danger');
+    return;
+  }
+
+  const completionData = {
+    lesson_id: currentLessonId,
+    teacher_id: teacher.teacherID,
+    completion_notes: completionNotes,
+    student_rating: studentRating ? parseInt(studentRating) : null,
+    teacher_rating: teacherRating ? parseInt(teacherRating) : null
+  };
+
+  try {
+    const response = await fetch(`/api/lessons/${currentLessonId}/complete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(completionData)
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      // Close modal
+      bootstrap.Modal.getInstance(document.getElementById('completeLessonModal')).hide();
+      
+      // Refresh lessons table and payment history
+      await loadBookedLessons();
+      await loadPaymentHistory();
+      
+      showNotification('Lesson completed and payment processed!', 'success');
+    } else {
+      showNotification(result.message || 'Failed to complete lesson', 'danger');
+    }
+  } catch (error) {
+    console.error('Error completing lesson:', error);
+    showNotification('Failed to complete lesson', 'danger');
+  }
+}
+
+// BANK INFORMATION FUNCTIONS
+
+// Save bank information
+async function saveBankInfo() {
+  if (!currentUserId) return;
+
+  const bankData = {
+    user_id: parseInt(currentUserId),
+    method_type: 'bank_account',
+    bank_name: document.getElementById('bankName').value,
+    account_holder_name: document.getElementById('accountHolderName').value,
+    bank_routing_number: document.getElementById('routingNumber').value.replace(/\D/g, ''),
+    bank_account_number: document.getElementById('accountNumber').value.replace(/\D/g, ''),
+    is_primary: true
+  };
+
+  try {
+    const response = await fetch('/api/payment-methods', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(bankData)
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      // Clear form
+      document.getElementById('bankInfoForm').reset();
+      
+      // Refresh bank info display
+      await loadBankInfo();
+      
+      showNotification('Bank information saved successfully!', 'success');
+    } else {
+      showNotification(result.message || 'Failed to save bank information', 'danger');
+    }
+  } catch (error) {
+    console.error('Error saving bank information:', error);
+    showNotification('Failed to save bank information', 'danger');
+  }
+}
+
+// Load bank information
+async function loadBankInfo() {
+  if (!currentUserId) return;
+
+  try {
+    const response = await fetch(`/api/payment-methods/${currentUserId}`);
+    const result = await response.json();
+    
+    if (result.success) {
+      const bankAccount = result.payment_methods.find(method => method.method_type === 'bank_account');
+      renderBankInfo(bankAccount);
+    } else {
+      console.error('Failed to load bank information:', result.message);
+    }
+  } catch (error) {
+    console.error('Error loading bank information:', error);
+  }
+}
+
+// Render bank information
+function renderBankInfo(bankAccount) {
+  const container = document.getElementById('currentBankInfo');
+  
+  if (!bankAccount) {
+    container.innerHTML = `
+      <div class="text-center text-muted py-3">
+        <i class="bi bi-bank fs-1 d-block mb-2"></i>
+        <p>No bank information added</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="d-flex align-items-center">
+      <i class="bi bi-bank fs-4 me-3 text-primary"></i>
+      <div>
+        <h6 class="mb-1">${bankAccount.bank_name}</h6>
+        <p class="text-muted mb-0">****${bankAccount.last_four_account}</p>
+        <small class="text-muted">${bankAccount.account_holder_name}</small>
+      </div>
+    </div>
+  `;
+}
+
+// PAYMENT HISTORY FUNCTIONS
+
+// Load payment history
+async function loadPaymentHistory() {
+  if (!currentUserId) return;
+
+  try {
+    // Get teacher ID from user ID
+    const teacher = await getTeacherByUserId(currentUserId);
+    if (!teacher) {
+      console.error('Teacher not found for user ID:', currentUserId);
+      return;
+    }
+
+    const response = await fetch(`/api/teacher/${teacher.teacherID}/payments`);
+    const result = await response.json();
+    
+    if (result.success) {
+      renderPaymentHistory(result.payments);
+      updateEarningsSummary(result.payments);
+    } else {
+      console.error('Failed to load payment history:', result.message);
+    }
+  } catch (error) {
+    console.error('Error loading payment history:', error);
+  }
+}
+
+// Render payment history
+function renderPaymentHistory(payments) {
+  const tbody = document.querySelector('#paymentHistoryTable tbody');
+  
+  if (!payments || payments.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No payments yet</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = payments.map(payment => `
+    <tr>
+      <td>${formatDate(payment.payment_date)}</td>
+      <td>${payment.student_name}</td>
+      <td>${payment.instrument} - ${payment.lesson_type}</td>
+      <td>$${payment.teacher_earnings.toFixed(2)}</td>
+      <td><span class="badge bg-success">${payment.status}</span></td>
+    </tr>
+  `).join('');
+}
+
+// Update earnings summary
+function updateEarningsSummary(payments) {
+  const totalEarnings = payments.reduce((sum, payment) => sum + payment.teacher_earnings, 0);
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  
+  const monthlyEarnings = payments
+    .filter(payment => {
+      const paymentDate = new Date(payment.payment_date);
+      return paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear;
+    })
+    .reduce((sum, payment) => sum + payment.teacher_earnings, 0);
+
+  document.getElementById('totalEarnings').textContent = `$${totalEarnings.toFixed(2)}`;
+  document.getElementById('monthlyEarnings').textContent = `$${monthlyEarnings.toFixed(2)}`;
 }
 
 function updateLessonsTable() {
+  console.log('Updating lessons table with', bookedLessons.length, 'lessons');
   const tbody = document.querySelector('#lessonsTable tbody');
   
+  if (!tbody) {
+    console.error('Lessons table tbody not found!');
+    return;
+  }
+  
   if (bookedLessons.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No lessons booked</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No lessons booked</td></tr>';
     return;
   }
   
@@ -363,12 +823,23 @@ function updateLessonsTable() {
       <td>${formatDate(lesson.date)} at ${lesson.time}</td>
       <td>${lesson.student}</td>
       <td>${lesson.instrument}</td>
-      <td>${lesson.type}</td>
+      <td><span class="badge bg-${lesson.type === 'virtual' ? 'info' : 'success'}">${lesson.type}</span></td>
       <td>${lesson.duration}</td>
       <td>$${lesson.revenue}</td>
-      <td><span class="badge bg-success">${lesson.status}</span></td>
+      <td><span class="badge bg-${lesson.status === 'upcoming' ? 'warning' : lesson.status === 'completed' ? 'success' : 'danger'}">${lesson.status}</span></td>
+      <td>
+        ${lesson.status === 'upcoming' ? `
+          <button class="btn btn-success btn-sm" onclick="openCompleteLessonModal(${lesson.id}, '${lesson.student}', '${lesson.instrument}', '${lesson.date}', '${lesson.time}')">
+            <i class="bi bi-check-circle me-1"></i>Complete
+          </button>
+        ` : lesson.status === 'completed' ? `
+          <span class="text-success"><i class="bi bi-check-circle me-1"></i>Completed</span>
+        ` : ''}
+      </td>
     </tr>
   `).join('');
+  
+  console.log('Lessons table updated');
 }
 
 function filterLessons(filter) {
@@ -395,7 +866,7 @@ function filterLessons(filter) {
   const tbody = document.querySelector('#lessonsTable tbody');
   
   if (filteredLessons.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No lessons found</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No lessons found</td></tr>';
     return;
   }
   
@@ -404,10 +875,19 @@ function filterLessons(filter) {
       <td>${formatDate(lesson.date)} at ${lesson.time}</td>
       <td>${lesson.student}</td>
       <td>${lesson.instrument}</td>
-      <td>${lesson.type}</td>
+      <td><span class="badge bg-${lesson.type === 'virtual' ? 'info' : 'success'}">${lesson.type}</span></td>
       <td>${lesson.duration}</td>
       <td>$${lesson.revenue}</td>
-      <td><span class="badge bg-success">${lesson.status}</span></td>
+      <td><span class="badge bg-${lesson.status === 'upcoming' ? 'warning' : lesson.status === 'completed' ? 'success' : 'danger'}">${lesson.status}</span></td>
+      <td>
+        ${lesson.status === 'upcoming' ? `
+          <button class="btn btn-success btn-sm" onclick="openCompleteLessonModal(${lesson.id}, '${lesson.student}', '${lesson.instrument}', '${lesson.date}', '${lesson.time}')">
+            <i class="bi bi-check-circle me-1"></i>Complete
+          </button>
+        ` : lesson.status === 'completed' ? `
+          <span class="text-success"><i class="bi bi-check-circle me-1"></i>Completed</span>
+        ` : ''}
+      </td>
     </tr>
   `).join('');
 }

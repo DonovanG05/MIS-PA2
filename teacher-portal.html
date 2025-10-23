@@ -60,6 +60,12 @@
             <a href="#pricing" class="list-group-item list-group-item-action" data-bs-toggle="tab">
               <i class="bi bi-currency-dollar me-2"></i>Set Pricing
             </a>
+            <a href="#banking" class="list-group-item list-group-item-action" data-bs-toggle="tab">
+              <i class="bi bi-bank me-2"></i>Bank Information
+            </a>
+            <a href="#payments" class="list-group-item list-group-item-action" data-bs-toggle="tab">
+              <i class="bi bi-cash-coin me-2"></i>Payment History
+            </a>
           </div>
         </div>
 
@@ -233,10 +239,15 @@
                       <h5 class="mb-0">Booked Lessons</h5>
                     </div>
                     <div class="col-md-6">
-                      <div class="btn-group" role="group">
-                        <button type="button" class="btn btn-outline-primary btn-sm active" onclick="filterLessons('upcoming')">Upcoming</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="filterLessons('past')">Past</button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="filterLessons('all')">All</button>
+                      <div class="d-flex justify-content-end gap-2">
+                        <div class="btn-group" role="group">
+                          <button type="button" class="btn btn-outline-primary btn-sm active" onclick="filterLessons('upcoming')">Upcoming</button>
+                          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="filterLessons('past')">Past</button>
+                          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="filterLessons('all')">All</button>
+                        </div>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="refreshLessons()">
+                          <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -253,11 +264,12 @@
                           <th>Duration</th>
                           <th>Revenue</th>
                           <th>Status</th>
+                          <th>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         <tr>
-                          <td colspan="7" class="text-center text-muted">No lessons booked</td>
+                          <td colspan="8" class="text-center text-muted">No lessons booked</td>
                         </tr>
                       </tbody>
                     </table>
@@ -349,6 +361,121 @@
               </div>
             </div>
 
+            <!-- Bank Information Tab -->
+            <div class="tab-pane fade" id="banking">
+              <h2 class="mb-4">Bank Information</h2>
+              
+              <div class="row">
+                <div class="col-md-8">
+                  <div class="card">
+                    <div class="card-header">
+                      <h5 class="mb-0">Add Bank Account for Payments</h5>
+                    </div>
+                    <div class="card-body">
+                      <form id="bankInfoForm">
+                        <div class="row">
+                          <div class="col-md-6">
+                            <div class="mb-3">
+                              <label for="bankName" class="form-label">Bank Name</label>
+                              <input type="text" class="form-control" id="bankName" placeholder="Chase Bank" required>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="mb-3">
+                              <label for="accountHolderName" class="form-label">Account Holder Name</label>
+                              <input type="text" class="form-control" id="accountHolderName" placeholder="John Doe" required>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="row">
+                          <div class="col-md-6">
+                            <div class="mb-3">
+                              <label for="routingNumber" class="form-label">Routing Number</label>
+                              <input type="text" class="form-control" id="routingNumber" placeholder="021000021" maxlength="9" required>
+                              <div class="form-text">9-digit routing number. Test: 021000021, 011401533, 111000025</div>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="mb-3">
+                              <label for="accountNumber" class="form-label">Account Number</label>
+                              <input type="text" class="form-control" id="accountNumber" placeholder="1234567890" required>
+                              <div class="form-text">4-17 digits. Test: 1234567890, 9876543210, 5555555555</div>
+                            </div>
+                          </div>
+                        </div>
+                        <button type="button" class="btn btn-primary" onclick="saveBankInfo()">
+                          <i class="bi bi-bank me-1"></i>Save Bank Information
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="card">
+                    <div class="card-header">
+                      <h5 class="mb-0">Current Bank Info</h5>
+                    </div>
+                    <div class="card-body" id="currentBankInfo">
+                      <div class="text-center text-muted py-3">
+                        <i class="bi bi-bank fs-1 d-block mb-2"></i>
+                        <p>No bank information added</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Payment History Tab -->
+            <div class="tab-pane fade" id="payments">
+              <h2 class="mb-4">Payment History</h2>
+              
+              <div class="row mb-4">
+                <div class="col-md-6">
+                  <div class="card bg-primary text-white">
+                    <div class="card-body">
+                      <h5 class="card-title">Total Earnings</h5>
+                      <h3 class="mb-0" id="totalEarnings">$0.00</h3>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="card bg-success text-white">
+                    <div class="card-body">
+                      <h5 class="card-title">This Month</h5>
+                      <h3 class="mb-0" id="monthlyEarnings">$0.00</h3>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <h5 class="mb-0">Payment History</h5>
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-striped" id="paymentHistoryTable">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Student</th>
+                          <th>Lesson</th>
+                          <th>Amount</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td colspan="5" class="text-center text-muted">No payments yet</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -413,6 +540,77 @@
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
             <button type="button" class="btn btn-primary" onclick="addAvailability()">Add Availability</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lesson Completion Modal -->
+    <div class="modal fade" id="completeLessonModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Complete Lesson</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <form id="completeLessonForm">
+              <div class="mb-3">
+                <label class="form-label">Lesson Details</label>
+                <div class="card bg-light">
+                  <div class="card-body">
+                    <div class="row">
+                      <div class="col-md-6">
+                        <strong>Student:</strong> <span id="completionStudentName"></span><br>
+                        <strong>Instrument:</strong> <span id="completionInstrument"></span>
+                      </div>
+                      <div class="col-md-6">
+                        <strong>Date:</strong> <span id="completionDate"></span><br>
+                        <strong>Time:</strong> <span id="completionTime"></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <label for="completionNotes" class="form-label">Completion Notes</label>
+                <textarea class="form-control" id="completionNotes" rows="3" placeholder="How did the lesson go? What was covered? Any feedback for the student?"></textarea>
+              </div>
+              
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="studentRating" class="form-label">Student Performance Rating</label>
+                    <select class="form-select" id="studentRating">
+                      <option value="">Select rating</option>
+                      <option value="1">1 - Needs Improvement</option>
+                      <option value="2">2 - Below Average</option>
+                      <option value="3">3 - Average</option>
+                      <option value="4">4 - Good</option>
+                      <option value="5">5 - Excellent</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label for="teacherRating" class="form-label">Your Teaching Rating</label>
+                    <select class="form-select" id="teacherRating">
+                      <option value="">Select rating</option>
+                      <option value="1">1 - Poor</option>
+                      <option value="2">2 - Fair</option>
+                      <option value="3">3 - Good</option>
+                      <option value="4">4 - Very Good</option>
+                      <option value="5">5 - Excellent</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-success" onclick="completeLesson()">Complete Lesson</button>
           </div>
         </div>
       </div>

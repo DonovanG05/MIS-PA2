@@ -63,6 +63,9 @@
             <a href="#users" class="list-group-item list-group-item-action" data-bs-toggle="tab">
               <i class="bi bi-people me-2"></i>Users
             </a>
+            <a href="#transactions" class="list-group-item list-group-item-action" data-bs-toggle="tab">
+              <i class="bi bi-cash-coin me-2"></i>Transactions
+            </a>
           </div>
         </div>
 
@@ -126,7 +129,7 @@
                       <div class="d-flex justify-content-between">
                         <div>
                           <h4 class="card-title">Total Revenue</h4>
-                          <h2 class="mb-0" id="totalRevenue">$0</h2>
+                          <h2 class="mb-0" id="dashboardTotalRevenue">$0</h2>
                         </div>
                         <div class="align-self-center">
                           <i class="bi bi-currency-dollar fs-1"></i>
@@ -346,6 +349,73 @@
                       <h6>User Registration Timeline</h6>
                       <canvas id="userRegistrationChart" width="400" height="200"></canvas>
                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Transactions Tab -->
+            <div class="tab-pane fade" id="transactions">
+              <h2 class="mb-4">Transaction Management</h2>
+              
+              <!-- Revenue Summary -->
+              <div class="row mb-4">
+                <div class="col-md-4">
+                  <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                      <h4 class="card-title">Total Revenue</h4>
+                      <h2 class="mb-0" id="totalRevenue">$0.00</h2>
+                      <p class="mb-0">Platform earnings</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="card bg-success text-white">
+                    <div class="card-body text-center">
+                      <h4 class="card-title">Total Transactions</h4>
+                      <h2 class="mb-0" id="totalTransactions">0</h2>
+                      <p class="mb-0">Completed payments</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="card bg-info text-white">
+                    <div class="card-body text-center">
+                      <h4 class="card-title">Average Fee</h4>
+                      <h2 class="mb-0" id="avgFee">$0.00</h2>
+                      <p class="mb-0">Per transaction</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Transactions Table -->
+              <div class="card">
+                <div class="card-header">
+                  <h5 class="mb-0">All Transactions</h5>
+                </div>
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-striped" id="transactionsTable">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Transaction ID</th>
+                          <th>Student</th>
+                          <th>Teacher</th>
+                          <th>Lesson</th>
+                          <th>Total Amount</th>
+                          <th>Platform Fee (10%)</th>
+                          <th>Teacher Earnings</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td colspan="9" class="text-center text-muted">No transactions yet</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>

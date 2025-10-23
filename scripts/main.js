@@ -7,7 +7,21 @@ function validateForm(formId) {
   let isValid = true;
   
   inputs.forEach(input => {
-    if (!input.value.trim()) {
+    if (input.type === 'file') {
+      // File inputs are handled separately
+      return;
+    }
+    
+    if (input.multiple) {
+      // Handle multi-select dropdowns
+      const selectedOptions = Array.from(input.selectedOptions);
+      if (selectedOptions.length === 0) {
+        input.classList.add('is-invalid');
+        isValid = false;
+      } else {
+        input.classList.remove('is-invalid');
+      }
+    } else if (!input.value.trim()) {
       input.classList.add('is-invalid');
       isValid = false;
     } else {
@@ -143,6 +157,11 @@ async function submitTeacherSignup() {
       virtual_available: formData.virtual,
       in_person_available: formData.inPerson
     };
+    
+    // Debug logging
+    console.log('Teacher signup data:', signupData);
+    console.log('Instruments array:', formData.instruments);
+    console.log('Rate per hour:', formData.rates);
 
     // Send to API
     const response = await fetch('/api/signup/teacher', {

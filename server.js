@@ -21,6 +21,12 @@ async function startServer() {
   try {
     await db.initialize();
     console.log('Database initialized successfully');
+    
+    // Clean up past availability entries on startup
+    const deletedCount = await db.cleanupPastAvailability();
+    if (deletedCount > 0) {
+      console.log(`Cleaned up ${deletedCount} past availability entries`);
+    }
   } catch (error) {
     console.error('Failed to initialize database:', error);
     process.exit(1);
@@ -75,6 +81,11 @@ app.post('/api/signup/teacher', async (req, res) => {
   try {
     const { name, email, password, phone, location, bio, instruments, photo_url, rate_per_hour, virtual_available, in_person_available } = req.body;
     
+    // Debug logging
+    console.log('Teacher signup received:', {
+      name, email, instruments, rate_per_hour, virtual_available, in_person_available
+    });
+    
     // Create user first
     const userResult = await db.createUser({
       name,
@@ -91,7 +102,7 @@ app.post('/api/signup/teacher', async (req, res) => {
       bio,
       instruments,
       photo_url: photo_url || 'https://via.placeholder.com/150',
-      rate_per_hour: parseFloat(rate_per_hour) || 0,
+      rate_per_hour: rate_per_hour ? parseFloat(rate_per_hour) : 60, // Default to 60 if not provided
       virtual_available: virtual_available || true,
       in_person_available: in_person_available || true
     });
@@ -153,16 +164,16 @@ app.post('/api/signup/student', async (req, res) => {
 // Get available lessons
 app.get('/api/lessons/available', async (req, res) => {
   try {
-    const { instrument, type } = req.query;
+    const { instrument, lessonType } = req.query;
     
-    if (!instrument || !type) {
+    if (!instrument || !lessonType) {
       return res.status(400).json({
         success: false,
         message: 'Instrument and lesson type are required'
       });
     }
     
-    const lessons = await db.getAvailableLessons(instrument, type);
+    const lessons = await db.getAvailableLessons(instrument, lessonType);
     res.json({
       success: true,
       lessons
@@ -182,8 +193,8 @@ app.post('/api/lessons/book', async (req, res) => {
   try {
     const lessonData = req.body;
     
-    // Get teacher rate
-    const teacher = await db.getTeacherByUserId(lessonData.teacher_id);
+    // Get teacher by teacher ID (not user ID)
+    const teacher = await db.get('SELECT * FROM teachers WHERE teacherID = ?', [lessonData.teacher_id]);
     if (!teacher) {
       return res.status(404).json({
         success: false,
@@ -198,7 +209,7 @@ app.post('/api/lessons/book', async (req, res) => {
     res.json({
       success: true,
       message: 'Lesson booked successfully',
-      lesson_id: result.id
+      lesson_id: result.lastID
     });
   } catch (error) {
     console.error('Book lesson error:', error);
@@ -238,7 +249,7 @@ app.get('/api/teacher/:id/lessons', async (req, res) => {
     const { id } = req.params;
     const { status } = req.query;
     
-    const lessons = await db.getTeacherLessons(parseInt(id), status);
+    const lessons = await db.getTeacherLessons(parseInt(id));
     
     res.json({
       success: true,
@@ -277,6 +288,383 @@ app.get('/api/teacher/email/:email/profile', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to get teacher profile',
+      error: error.message
+    });
+  }
+});
+
+// Get current date/time
+app.get('/api/current-datetime', (req, res) => {
+  const now = new Date();
+  res.json({
+    success: true,
+    current_date: now.toISOString().split('T')[0], // YYYY-MM-DD
+    current_time: now.toTimeString().split(' ')[0], // HH:MM:SS
+    current_datetime: now.toISOString(), // Full ISO string
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+  });
+});
+
+// Clean up past availability entries
+app.post('/api/cleanup-past-availability', async (req, res) => {
+  try {
+    const deletedCount = await db.cleanupPastAvailability();
+    res.json({
+      success: true,
+      message: `Cleaned up ${deletedCount} past availability entries`,
+      deleted_count: deletedCount
+    });
+  } catch (error) {
+    console.error('Cleanup past availability error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to cleanup past availability',
+      error: error.message
+    });
+  }
+});
+
+// Add teacher availability
+app.post('/api/availability', async (req, res) => {
+  try {
+    const { teacher_id, available_date, start_time, end_time, lesson_type } = req.body;
+    
+    if (!teacher_id || !available_date || !start_time || !end_time || !lesson_type) {
+      return res.status(400).json({
+        success: false,
+        message: 'All fields are required'
+      });
+    }
+    
+    const result = await db.addAvailability({
+      teacher_id,
+      available_date,
+      start_time,
+      end_time,
+      lesson_type
+    });
+    
+    res.json({
+      success: true,
+      message: 'Availability added successfully',
+      availability_id: result.lastID
+    });
+  } catch (error) {
+    console.error('Add availability error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add availability',
+      error: error.message
+    });
+  }
+});
+
+// Get teacher availability
+app.get('/api/teacher/:teacherId/availability', async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const availability = await db.getTeacherAvailability(parseInt(teacherId));
+    
+    res.json({
+      success: true,
+      availability: availability
+    });
+  } catch (error) {
+    console.error('Get teacher availability error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get availability',
+      error: error.message
+    });
+  }
+});
+
+// PAYMENT METHODS API
+
+// Add payment method
+app.post('/api/payment-methods', async (req, res) => {
+  try {
+    const { user_id, method_type, ...paymentData } = req.body;
+    
+    // Validate based on method type
+    if (method_type === 'credit_card') {
+      const cardValidation = db.validateCreditCard(paymentData.card_number);
+      if (!cardValidation.valid) {
+        return res.status(400).json({
+          success: false,
+          message: cardValidation.error
+        });
+      }
+      
+      const cvvValidation = db.validateCVV(paymentData.cvv);
+      if (!cvvValidation.valid) {
+        return res.status(400).json({
+          success: false,
+          message: cvvValidation.error
+        });
+      }
+      
+      const expiryValidation = db.validateExpiryDate(paymentData.expiry_month, paymentData.expiry_year);
+      if (!expiryValidation.valid) {
+        return res.status(400).json({
+          success: false,
+          message: expiryValidation.error
+        });
+      }
+    } else if (method_type === 'bank_account') {
+      const routingValidation = db.validateRoutingNumber(paymentData.bank_routing_number);
+      if (!routingValidation.valid) {
+        return res.status(400).json({
+          success: false,
+          message: routingValidation.error
+        });
+      }
+      
+      const accountValidation = db.validateAccountNumber(paymentData.bank_account_number);
+      if (!accountValidation.valid) {
+        return res.status(400).json({
+          success: false,
+          message: accountValidation.error
+        });
+      }
+    }
+    
+    const result = await db.addPaymentMethod({ user_id, method_type, ...paymentData });
+    
+    res.json({
+      success: true,
+      message: 'Payment method added successfully',
+      payment_method_id: result.lastID
+    });
+  } catch (error) {
+    console.error('Add payment method error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add payment method',
+      error: error.message
+    });
+  }
+});
+
+// Get user's payment methods
+app.get('/api/payment-methods/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const paymentMethods = await db.getPaymentMethods(parseInt(userId));
+    
+    res.json({
+      success: true,
+      payment_methods: paymentMethods
+    });
+  } catch (error) {
+    console.error('Get payment methods error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get payment methods',
+      error: error.message
+    });
+  }
+});
+
+// Set primary payment method
+app.put('/api/payment-methods/:userId/primary', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { payment_method_id } = req.body;
+    
+    await db.setPrimaryPaymentMethod(parseInt(userId), parseInt(payment_method_id));
+    
+    res.json({
+      success: true,
+      message: 'Primary payment method updated'
+    });
+  } catch (error) {
+    console.error('Set primary payment method error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to set primary payment method',
+      error: error.message
+    });
+  }
+});
+
+// Delete payment method
+app.delete('/api/payment-methods/:userId/:paymentMethodId', async (req, res) => {
+  try {
+    const { userId, paymentMethodId } = req.params;
+    
+    await db.deletePaymentMethod(parseInt(paymentMethodId), parseInt(userId));
+    
+    res.json({
+      success: true,
+      message: 'Payment method deleted'
+    });
+  } catch (error) {
+    console.error('Delete payment method error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete payment method',
+      error: error.message
+    });
+  }
+});
+
+// LESSON COMPLETION API
+
+// Complete a lesson
+app.post('/api/lessons/:lessonId/complete', async (req, res) => {
+  try {
+    const { lessonId } = req.params;
+    const { teacher_id, completion_notes, student_rating, teacher_rating } = req.body;
+    
+    const completionData = {
+      lesson_id: parseInt(lessonId),
+      teacher_id: parseInt(teacher_id),
+      completion_notes,
+      student_rating: student_rating ? parseInt(student_rating) : null,
+      teacher_rating: teacher_rating ? parseInt(teacher_rating) : null
+    };
+    
+    await db.completeLesson(completionData);
+    
+    res.json({
+      success: true,
+      message: 'Lesson marked as completed'
+    });
+  } catch (error) {
+    console.error('Complete lesson error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to complete lesson',
+      error: error.message
+    });
+  }
+});
+
+// Get lesson completion details
+app.get('/api/lessons/:lessonId/completion', async (req, res) => {
+  try {
+    const { lessonId } = req.params;
+    const completion = await db.getLessonCompletion(parseInt(lessonId));
+    
+    if (!completion) {
+      return res.status(404).json({
+        success: false,
+        message: 'Lesson completion not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      completion
+    });
+  } catch (error) {
+    console.error('Get lesson completion error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get lesson completion',
+      error: error.message
+    });
+  }
+});
+
+// Get teacher's completed lessons
+app.get('/api/teacher/:teacherId/completed-lessons', async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const completedLessons = await db.getTeacherCompletedLessons(parseInt(teacherId));
+    
+    res.json({
+      success: true,
+      completed_lessons: completedLessons
+    });
+  } catch (error) {
+    console.error('Get completed lessons error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get completed lessons',
+      error: error.message
+    });
+  }
+});
+
+// Get teacher's payment history
+app.get('/api/teacher/:teacherId/payments', async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const payments = await db.getTeacherPayments(parseInt(teacherId));
+    
+    res.json({
+      success: true,
+      payments: payments
+    });
+  } catch (error) {
+    console.error('Get teacher payments error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get payment history',
+      error: error.message
+    });
+  }
+});
+
+// ADMIN REVENUE API
+
+// Get all payments for admin dashboard
+app.get('/api/admin/payments', async (req, res) => {
+  try {
+    const payments = await db.getAllPayments();
+    const revenue = await db.getPlatformRevenue();
+    
+    res.json({
+      success: true,
+      payments: payments,
+      revenue: revenue
+    });
+  } catch (error) {
+    console.error('Get admin payments error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get payments data',
+      error: error.message
+    });
+  }
+});
+
+// Get platform revenue summary
+app.get('/api/admin/revenue', async (req, res) => {
+  try {
+    const revenue = await db.getPlatformRevenue();
+    
+    res.json({
+      success: true,
+      revenue: revenue
+    });
+  } catch (error) {
+    console.error('Get revenue error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get revenue data',
+      error: error.message
+    });
+  }
+});
+
+// Get student's payment history
+app.get('/api/student/:studentId/payments', async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const payments = await db.getStudentPayments(parseInt(studentId));
+    
+    res.json({
+      success: true,
+      payments: payments
+    });
+  } catch (error) {
+    console.error('Get student payments error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get payment history',
       error: error.message
     });
   }
@@ -326,7 +714,7 @@ app.put('/api/teacher/:id/profile', async (req, res) => {
     }
     
     // Update both user and teacher tables
-    const result = await db.updateTeacher(teacher.id, updateData);
+    const result = await db.updateTeacher(teacher.teacherID, updateData);
     
     res.json({
       success: true,
@@ -387,7 +775,7 @@ app.put('/api/student/:id/profile', async (req, res) => {
     }
     
     // Update both user and student tables
-    const result = await db.updateStudent(student.id, updateData);
+    const result = await db.updateStudent(student.studentID, updateData);
     
     res.json({
       success: true,

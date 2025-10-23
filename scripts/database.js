@@ -36,10 +36,10 @@ class Database {
       const schemaSQL = fs.readFileSync(schemaPath, 'utf8');
       await this.exec(schemaSQL);
       
-      // Read and execute sample data
-      const samplePath = path.join(__dirname, '../data/sample_data.sql');
-      const sampleSQL = fs.readFileSync(samplePath, 'utf8');
-      await this.exec(sampleSQL);
+      // Read and execute sample data (commented out to prevent duplicate data)
+      // const samplePath = path.join(__dirname, '../data/sample_data.sql');
+      // const sampleSQL = fs.readFileSync(samplePath, 'utf8');
+      // await this.exec(sampleSQL);
       
       console.log('Database initialized successfully');
     } catch (error) {
@@ -208,7 +208,7 @@ class Database {
       UPDATE teachers 
       SET bio = ?, instruments = ?, photo_url = ?, rate_per_hour = ?, 
           virtual_available = ?, in_person_available = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
+      WHERE teacherID = ?
     `;
     const params = [
       updateData.bio,
@@ -256,7 +256,7 @@ class Database {
       SELECT s.*, u.name, u.email, u.phone, u.location, u.password, u.photo_url
       FROM students s 
       JOIN users u ON s.user_id = u.id 
-      WHERE s.id = ?
+      WHERE s.studentID = ?
     `;
     return await this.get(sql, [studentId]);
   }
@@ -289,7 +289,7 @@ class Database {
     const studentSql = `
       UPDATE students 
       SET primary_instrument = ?, skill_level = ?, learning_goals = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
+      WHERE studentID = ?
     `;
     const studentParams = [
       updateData.primary_instrument,
@@ -304,67 +304,136 @@ class Database {
 
   // Get available lessons
   async getAvailableLessons(instrument, lessonType) {
+    const currentDate = new Date().toISOString().split('T')[0];
     const sql = `
       SELECT a.*, t.rate_per_hour, u.name as teacher_name, t.instruments
       FROM availability a
-      JOIN teachers t ON a.teacher_id = t.id
+      JOIN teachers t ON a.teacher_id = t.teacherID
       JOIN users u ON t.user_id = u.id
-      WHERE t.instruments LIKE ? AND a.lesson_type = ? AND a.is_available = 1
-      AND a.available_date >= date('now')
+      WHERE (t.instruments LIKE ? OR t.instruments IS NULL) AND a.lesson_type = ? AND a.is_available = 1
+      AND a.available_date >= ?
       ORDER BY a.available_date, a.start_time
     `;
-    const rows = await this.all(sql, [`%${instrument}%`, lessonType]);
+    const rows = await this.all(sql, [`%${instrument}%`, lessonType, currentDate]);
     return rows.map(row => ({
       ...row,
-      instruments: JSON.parse(row.instruments)
+      instruments: row.instruments ? JSON.parse(row.instruments) : []
     }));
+  }
+
+  // Clean up past availability entries
+  async cleanupPastAvailability() {
+    const currentDate = new Date().toISOString().split('T')[0];
+    const sql = `DELETE FROM availability WHERE available_date < ?`;
+    const result = await this.run(sql, [currentDate]);
+    return result.changes;
+  }
+
+  // Check if availability slot exists
+  async checkAvailabilityExists(teacherId, lessonDate, lessonTime, lessonType) {
+    const sql = `
+      SELECT id FROM availability 
+      WHERE teacher_id = ? AND available_date = ? AND start_time = ? AND lesson_type = ?
+    `;
+    const result = await this.get(sql, [teacherId, lessonDate, lessonTime, lessonType]);
+    return result !== undefined;
+  }
+
+  // Remove availability slot
+  async removeAvailability(teacherId, lessonDate, lessonTime, lessonType) {
+    const sql = `
+      DELETE FROM availability 
+      WHERE teacher_id = ? AND available_date = ? AND start_time = ? AND lesson_type = ?
+    `;
+    const result = await this.run(sql, [teacherId, lessonDate, lessonTime, lessonType]);
+    return result.changes > 0;
   }
 
   // Book a lesson
   async bookLesson(lessonData) {
-    const sql = `
-      INSERT INTO lessons (teacher_id, student_id, instrument, lesson_date, lesson_time, 
-                          duration, lesson_type, status, notes, sheet_music_urls, 
-                          recurring_interval, recurring_count, total_cost, teacher_earnings, fm_commission)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-    
-    // Calculate costs (assuming 10% FM commission)
-    const totalCost = lessonData.duration * (lessonData.rate_per_hour / 60);
-    const fmCommission = totalCost * 0.1;
-    const teacherEarnings = totalCost - fmCommission;
-    
-    const params = [
+    // First, check if the availability slot still exists
+    const availabilityExists = await this.checkAvailabilityExists(
       lessonData.teacher_id,
-      lessonData.student_id,
-      lessonData.instrument,
       lessonData.lesson_date,
       lessonData.lesson_time,
-      lessonData.duration,
-      lessonData.lesson_type,
-      'upcoming',
-      lessonData.notes,
-      JSON.stringify(lessonData.sheet_music_urls || []),
-      lessonData.recurring_interval || null,
-      lessonData.recurring_count || 1,
-      totalCost,
-      teacherEarnings,
-      fmCommission
-    ];
+      lessonData.lesson_type
+    );
     
-    return await this.run(sql, params);
+    if (!availabilityExists) {
+      throw new Error('This time slot is no longer available. It may have been booked by another student.');
+    }
+    
+    // Start a transaction to ensure both operations succeed or fail together
+    await this.run('BEGIN TRANSACTION');
+    
+    try {
+      // Remove the availability slot to prevent double-booking
+      const removed = await this.removeAvailability(
+        lessonData.teacher_id,
+        lessonData.lesson_date,
+        lessonData.lesson_time,
+        lessonData.lesson_type
+      );
+      
+      if (!removed) {
+        throw new Error('Failed to remove availability slot. The slot may have been booked by another student.');
+      }
+      
+      // Then, create the lesson
+      const sql = `
+        INSERT INTO lessons (teacher_id, student_id, instrument, lesson_date, lesson_time, 
+                            duration, lesson_type, status, notes, sheet_music_urls, 
+                            recurring_interval, recurring_count, total_cost, teacher_earnings, fm_commission)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+      
+      // Calculate costs (assuming 10% FM commission)
+      const totalCost = lessonData.duration * (lessonData.rate_per_hour / 60);
+      const fmCommission = totalCost * 0.1;
+      const teacherEarnings = totalCost - fmCommission;
+      
+      const params = [
+        lessonData.teacher_id,
+        lessonData.student_id,
+        lessonData.instrument,
+        lessonData.lesson_date,
+        lessonData.lesson_time,
+        lessonData.duration,
+        lessonData.lesson_type,
+        'upcoming',
+        lessonData.notes,
+        JSON.stringify(lessonData.sheet_music_urls || []),
+        lessonData.recurring_interval || null,
+        lessonData.recurring_count || 1,
+        totalCost,
+        teacherEarnings,
+        fmCommission
+      ];
+      
+      const result = await this.run(sql, params);
+      
+      // Commit the transaction
+      await this.run('COMMIT');
+      
+      return result;
+    } catch (error) {
+      // Rollback the transaction on error
+      await this.run('ROLLBACK');
+      throw error;
+    }
   }
 
   // Get student's lessons
   async getStudentLessons(studentId, status = null) {
+    const currentDate = new Date().toISOString().split('T')[0];
     let sql = `
       SELECT l.*, t.rate_per_hour, u.name as teacher_name
       FROM lessons l
-      JOIN teachers t ON l.teacher_id = t.id
+      JOIN teachers t ON l.teacher_id = t.teacherID
       JOIN users u ON t.user_id = u.id
-      WHERE l.student_id = ?
+      WHERE l.student_id = ? AND l.lesson_date >= ?
     `;
-    const params = [studentId];
+    const params = [studentId, currentDate];
     
     if (status) {
       sql += ' AND l.status = ?';
@@ -378,14 +447,15 @@ class Database {
 
   // Get teacher's lessons
   async getTeacherLessons(teacherId, status = null) {
+    const currentDate = new Date().toISOString().split('T')[0];
     let sql = `
       SELECT l.*, s.primary_instrument, u.name as student_name
       FROM lessons l
-      JOIN students s ON l.student_id = s.id
+      JOIN students s ON l.student_id = s.studentID
       JOIN users u ON s.user_id = u.id
-      WHERE l.teacher_id = ?
+      WHERE l.teacher_id = ? AND l.lesson_date >= ?
     `;
-    const params = [teacherId];
+    const params = [teacherId, currentDate];
     
     if (status) {
       sql += ' AND l.status = ?';
@@ -435,17 +505,19 @@ class Database {
 
   // Get all lessons
   async getAllLessons() {
+    const currentDate = new Date().toISOString().split('T')[0];
     const sql = `
       SELECT l.*, t.rate_per_hour, 
              ut.name as teacher_name, us.name as student_name
       FROM lessons l
-      JOIN teachers t ON l.teacher_id = t.id
+      JOIN teachers t ON l.teacher_id = t.teacherID
       JOIN users ut ON t.user_id = ut.id
-      JOIN students s ON l.student_id = s.id
+      JOIN students s ON l.student_id = s.studentID
       JOIN users us ON s.user_id = us.id
+      WHERE l.lesson_date >= ?
       ORDER BY l.lesson_date DESC, l.lesson_time DESC
     `;
-    return await this.all(sql);
+    return await this.all(sql, [currentDate]);
   }
 
   // Get revenue statistics
@@ -485,14 +557,14 @@ class Database {
         FROM lessons
       `);
 
-      // Get revenue data
+      // Get revenue data from payments table (platform fees only)
       const revenueData = await this.get(`
         SELECT 
-          COALESCE(SUM(total_cost), 0) as total_revenue,
-          COALESCE(SUM(fm_commission), 0) as total_commission,
+          COALESCE(SUM(platform_fee), 0) as total_revenue,
+          COALESCE(SUM(platform_fee), 0) as total_commission,
           COALESCE(SUM(teacher_earnings), 0) as total_teacher_earnings
-        FROM lessons
-        WHERE status IN ('upcoming', 'completed')
+        FROM payments
+        WHERE status = 'completed'
       `);
 
       // Get popular instruments
@@ -532,9 +604,9 @@ class Database {
           ut.name as teacher_name,
           us.name as student_name
         FROM lessons l
-        JOIN teachers t ON l.teacher_id = t.id
+        JOIN teachers t ON l.teacher_id = t.teacherID
         JOIN users ut ON t.user_id = ut.id
-        JOIN students s ON l.student_id = s.id
+        JOIN students s ON l.student_id = s.studentID
         JOIN users us ON s.user_id = us.id
         ORDER BY l.lesson_date, l.lesson_time
         LIMIT 50
@@ -573,13 +645,345 @@ class Database {
       SELECT t.*, u.name, u.email, u.phone, u.location, u.password
       FROM teachers t 
       JOIN users u ON t.user_id = u.id 
-      WHERE t.id = ?
+      WHERE t.teacherID = ?
     `;
     const teacher = await this.get(sql, [teacherId]);
     if (teacher) {
       teacher.instruments = JSON.parse(teacher.instruments);
     }
     return teacher;
+  }
+
+  // Get lessons for a specific teacher
+  async getTeacherLessons(teacherId) {
+    const currentDate = new Date().toISOString().split('T')[0];
+    const sql = `
+      SELECT l.*, s.primary_instrument, u.name as student_name, u.email as student_email
+      FROM lessons l
+      JOIN students s ON l.student_id = s.studentID
+      JOIN users u ON s.user_id = u.id
+      WHERE l.teacher_id = ? AND l.lesson_date >= ?
+      ORDER BY l.lesson_date DESC, l.lesson_time DESC
+    `;
+    return await this.all(sql, [teacherId, currentDate]);
+  }
+
+  // PAYMENT METHODS OPERATIONS
+
+  // Add payment method
+  async addPaymentMethod(paymentData) {
+    const sql = `
+      INSERT INTO payment_methods (
+        user_id, method_type, card_number, card_holder_name, 
+        expiry_month, expiry_year, cvv, bank_routing_number, 
+        bank_account_number, bank_name, account_holder_name, is_primary
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    const params = [
+      paymentData.user_id,
+      paymentData.method_type,
+      paymentData.card_number,
+      paymentData.card_holder_name,
+      paymentData.expiry_month,
+      paymentData.expiry_year,
+      paymentData.cvv,
+      paymentData.bank_routing_number,
+      paymentData.bank_account_number,
+      paymentData.bank_name,
+      paymentData.account_holder_name,
+      paymentData.is_primary || 0
+    ];
+    return await this.run(sql, params);
+  }
+
+  // Get user's payment methods
+  async getPaymentMethods(userId) {
+    const sql = `
+      SELECT id, method_type, card_holder_name, 
+             SUBSTR(card_number, -4) as last_four_digits,
+             expiry_month, expiry_year, bank_name, 
+             SUBSTR(bank_account_number, -4) as last_four_account,
+             is_primary, is_verified, created_at
+      FROM payment_methods 
+      WHERE user_id = ? 
+      ORDER BY is_primary DESC, created_at DESC
+    `;
+    return await this.all(sql, [userId]);
+  }
+
+  // Set primary payment method
+  async setPrimaryPaymentMethod(userId, paymentMethodId) {
+    // First, unset all primary methods for this user
+    await this.run('UPDATE payment_methods SET is_primary = 0 WHERE user_id = ?', [userId]);
+    
+    // Then set the specified method as primary
+    const sql = 'UPDATE payment_methods SET is_primary = 1 WHERE id = ? AND user_id = ?';
+    return await this.run(sql, [paymentMethodId, userId]);
+  }
+
+  // Delete payment method
+  async deletePaymentMethod(paymentMethodId, userId) {
+    const sql = 'DELETE FROM payment_methods WHERE id = ? AND user_id = ?';
+    return await this.run(sql, [paymentMethodId, userId]);
+  }
+
+  // LESSON COMPLETION OPERATIONS
+
+  // Mark lesson as completed and process payment
+  async completeLesson(completionData) {
+    const sql = `
+      INSERT INTO lesson_completions (
+        lesson_id, teacher_id, completion_notes, student_rating, teacher_rating
+      ) VALUES (?, ?, ?, ?, ?)
+    `;
+    const params = [
+      completionData.lesson_id,
+      completionData.teacher_id,
+      completionData.completion_notes,
+      completionData.student_rating,
+      completionData.teacher_rating
+    ];
+    
+    // Also update the lesson status
+    await this.run('UPDATE lessons SET status = ? WHERE id = ?', ['completed', completionData.lesson_id]);
+    
+    // Process payment
+    const lesson = await this.get('SELECT * FROM lessons WHERE id = ?', [completionData.lesson_id]);
+    if (lesson) {
+      // Get student directly by student_id (not user_id)
+      const student = await this.get('SELECT * FROM students WHERE studentID = ?', [lesson.student_id]);
+      if (student) {
+        const paymentMethod = await this.getStudentPrimaryPaymentMethod(student.studentID);
+        if (paymentMethod) {
+          await this.processPayment(
+            lesson.id,
+            student.studentID,
+            completionData.teacher_id,
+            paymentMethod.id,
+            lesson.total_cost
+          );
+        }
+      }
+    }
+    
+    return await this.run(sql, params);
+  }
+
+  // Get lesson completion details
+  async getLessonCompletion(lessonId) {
+    const sql = `
+      SELECT lc.*, l.lesson_date, l.lesson_time, l.instrument,
+             ut.name as teacher_name, us.name as student_name
+      FROM lesson_completions lc
+      JOIN lessons l ON lc.lesson_id = l.id
+      JOIN teachers t ON lc.teacher_id = t.teacherID
+      JOIN users ut ON t.user_id = ut.id
+      JOIN students s ON l.student_id = s.studentID
+      JOIN users us ON s.user_id = us.id
+      WHERE lc.lesson_id = ?
+    `;
+    return await this.get(sql, [lessonId]);
+  }
+
+  // Get teacher's completed lessons
+  async getTeacherCompletedLessons(teacherId) {
+    const sql = `
+      SELECT lc.*, l.lesson_date, l.lesson_time, l.instrument,
+             us.name as student_name, s.primary_instrument
+      FROM lesson_completions lc
+      JOIN lessons l ON lc.lesson_id = l.id
+      JOIN students s ON l.student_id = s.studentID
+      JOIN users us ON s.user_id = us.id
+      WHERE lc.teacher_id = ?
+      ORDER BY lc.completed_at DESC
+    `;
+    return await this.all(sql, [teacherId]);
+  }
+
+  // VALIDATION FUNCTIONS
+
+  // Validate credit card number (Luhn algorithm)
+  validateCreditCard(cardNumber) {
+    // Remove spaces and non-digits
+    const cleaned = cardNumber.replace(/\D/g, '');
+    
+    // Check if it's 13-19 digits
+    if (cleaned.length < 13 || cleaned.length > 19) {
+      return { valid: false, error: 'Card number must be 13-19 digits' };
+    }
+    
+    // Luhn algorithm
+    let sum = 0;
+    let isEven = false;
+    
+    for (let i = cleaned.length - 1; i >= 0; i--) {
+      let digit = parseInt(cleaned[i]);
+      
+      if (isEven) {
+        digit *= 2;
+        if (digit > 9) {
+          digit -= 9;
+        }
+      }
+      
+      sum += digit;
+      isEven = !isEven;
+    }
+    
+    return { valid: sum % 10 === 0, error: sum % 10 === 0 ? null : 'Invalid card number' };
+  }
+
+  // Validate CVV
+  validateCVV(cvv, cardType = 'unknown') {
+    const cleaned = cvv.replace(/\D/g, '');
+    
+    if (cardType === 'amex') {
+      return { valid: cleaned.length === 4, error: 'AMEX CVV must be 4 digits' };
+    } else {
+      return { valid: cleaned.length === 3, error: 'CVV must be 3 digits' };
+    }
+  }
+
+  // Validate bank routing number
+  validateRoutingNumber(routingNumber) {
+    const cleaned = routingNumber.replace(/\D/g, '');
+    
+    if (cleaned.length !== 9) {
+      return { valid: false, error: 'Routing number must be 9 digits' };
+    }
+    
+    // Basic checksum validation (simplified)
+    const digits = cleaned.split('').map(Number);
+    const weights = [3, 7, 1, 3, 7, 1, 3, 7, 1];
+    let sum = 0;
+    
+    for (let i = 0; i < 9; i++) {
+      sum += digits[i] * weights[i];
+    }
+    
+    return { valid: sum % 10 === 0, error: sum % 10 === 0 ? null : 'Invalid routing number' };
+  }
+
+  // Validate bank account number
+  validateAccountNumber(accountNumber) {
+    const cleaned = accountNumber.replace(/\D/g, '');
+    
+    if (cleaned.length < 4 || cleaned.length > 17) {
+      return { valid: false, error: 'Account number must be 4-17 digits' };
+    }
+    
+    return { valid: true, error: null };
+  }
+
+  // Validate expiry date
+  validateExpiryDate(month, year) {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth() + 1;
+    
+    if (year < currentYear || (year === currentYear && month < currentMonth)) {
+      return { valid: false, error: 'Card has expired' };
+    }
+    
+    if (month < 1 || month > 12) {
+      return { valid: false, error: 'Invalid month' };
+    }
+    
+    return { valid: true, error: null };
+  }
+
+  // PAYMENT PROCESSING FUNCTIONS
+
+  // Process payment when lesson is completed
+  async processPayment(lessonId, studentId, teacherId, paymentMethodId, totalAmount) {
+    const platformFee = totalAmount * 0.10; // 10% platform fee
+    const teacherEarnings = totalAmount - platformFee;
+    const transactionId = `TXN_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    const sql = `
+      INSERT INTO payments (
+        lesson_id, student_id, teacher_id, payment_method_id, 
+        amount, platform_fee, teacher_earnings, transaction_id, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'completed')
+    `;
+    
+    const params = [
+      lessonId, studentId, teacherId, paymentMethodId,
+      totalAmount, platformFee, teacherEarnings, transactionId
+    ];
+    
+    return await this.run(sql, params);
+  }
+
+  // Get teacher's payment history
+  async getTeacherPayments(teacherId) {
+    const sql = `
+      SELECT p.*, l.instrument, l.lesson_type, l.lesson_date,
+             u.name as student_name
+      FROM payments p
+      JOIN lessons l ON p.lesson_id = l.id
+      JOIN students s ON p.student_id = s.studentID
+      JOIN users u ON s.user_id = u.id
+      WHERE p.teacher_id = ?
+      ORDER BY p.payment_date DESC
+    `;
+    return await this.all(sql, [teacherId]);
+  }
+
+  // Get all payments for admin dashboard
+  async getAllPayments() {
+    const sql = `
+      SELECT p.*, l.instrument, l.lesson_type, l.lesson_date,
+             ut.name as teacher_name, us.name as student_name
+      FROM payments p
+      JOIN lessons l ON p.lesson_id = l.id
+      JOIN teachers t ON p.teacher_id = t.teacherID
+      JOIN users ut ON t.user_id = ut.id
+      JOIN students s ON p.student_id = s.studentID
+      JOIN users us ON s.user_id = us.id
+      ORDER BY p.payment_date DESC
+    `;
+    return await this.all(sql, []);
+  }
+
+  // Get platform revenue summary
+  async getPlatformRevenue() {
+    const sql = `
+      SELECT 
+        SUM(platform_fee) as total_revenue,
+        COUNT(*) as total_transactions,
+        AVG(platform_fee) as avg_fee_per_transaction
+      FROM payments 
+      WHERE status = 'completed'
+    `;
+    return await this.get(sql, []);
+  }
+
+  // Get student's primary payment method
+  async getStudentPrimaryPaymentMethod(studentId) {
+    const sql = `
+      SELECT pm.*, u.id as user_id
+      FROM payment_methods pm
+      JOIN students s ON pm.user_id = s.user_id
+      JOIN users u ON s.user_id = u.id
+      WHERE s.studentID = ? AND pm.method_type = 'credit_card' AND pm.is_primary = 1
+    `;
+    return await this.get(sql, [studentId]);
+  }
+
+  // Get student's payment history
+  async getStudentPayments(studentId) {
+    const sql = `
+      SELECT p.*, l.instrument, l.lesson_type, l.lesson_date,
+             u.name as teacher_name
+      FROM payments p
+      JOIN lessons l ON p.lesson_id = l.id
+      JOIN teachers t ON p.teacher_id = t.teacherID
+      JOIN users u ON t.user_id = u.id
+      WHERE p.student_id = ?
+      ORDER BY p.payment_date DESC
+    `;
+    return await this.all(sql, [studentId]);
   }
 }
 

@@ -21,37 +21,63 @@ INSERT OR IGNORE INTO students (user_id, primary_instrument, skill_level, learni
 (4, 'piano', 'intermediate', 'Learn classical piano and improve technique. I want to be able to play Chopin and Debussy pieces.'),
 (5, 'guitar', 'beginner', 'Learn to play acoustic guitar for personal enjoyment. I want to be able to play my favorite songs around the campfire.');
 
--- Insert sample availability
+-- Insert sample payment methods
+INSERT OR IGNORE INTO payment_methods (user_id, method_type, card_number, card_holder_name, expiry_month, expiry_year, cvv, is_primary) VALUES
+(4, 'credit_card', '4111111111111111', 'John Doe', 12, 2026, '123', 1),
+(5, 'credit_card', '5555555555554444', 'Emily Davis', 10, 2027, '456', 1);
+
+-- Insert sample bank accounts for teachers
+INSERT OR IGNORE INTO payment_methods (user_id, method_type, bank_name, account_holder_name, bank_routing_number, bank_account_number, is_primary) VALUES
+(1, 'bank_account', 'Chase Bank', 'Jane Smith', '021000021', '1234567890', 1),
+(2, 'bank_account', 'Wells Fargo', 'Mike Johnson', '121000248', '9876543210', 1),
+(3, 'bank_account', 'Bank of America', 'Sarah Wilson', '026009593', '1122334455', 1);
+
+-- Insert sample availability (October 2025)
 INSERT OR IGNORE INTO availability (teacher_id, available_date, start_time, end_time, lesson_type) VALUES
--- Jane Smith (Piano/Voice) availability
-(1, '2024-01-15', '10:00:00', '11:00:00', 'virtual'),
-(1, '2024-01-15', '14:00:00', '15:00:00', 'in-person'),
-(1, '2024-01-16', '09:00:00', '10:00:00', 'virtual'),
-(1, '2024-01-16', '15:00:00', '16:00:00', 'in-person'),
-(1, '2024-01-17', '11:00:00', '12:00:00', 'virtual'),
-(1, '2024-01-18', '13:00:00', '14:00:00', 'in-person'),
+-- Jane Smith (Piano/Voice) availability - Past dates (for testing cleanup)
+(1, '2024-01-01', '10:00:00', '11:00:00', 'virtual'),
+(1, '2024-06-15', '14:00:00', '15:00:00', 'in-person'),
+-- Jane Smith (Piano/Voice) availability - Future dates (November 2025)
+(1, '2025-11-01', '10:00:00', '11:00:00', 'virtual'),
+(1, '2025-11-01', '14:00:00', '15:00:00', 'in-person'),
+(1, '2025-11-02', '09:00:00', '10:00:00', 'virtual'),
+(1, '2025-11-02', '15:00:00', '16:00:00', 'in-person'),
+(1, '2025-11-03', '11:00:00', '12:00:00', 'virtual'),
+(1, '2025-11-04', '13:00:00', '14:00:00', 'in-person'),
+(1, '2025-11-07', '10:00:00', '11:00:00', 'virtual'),
+(1, '2025-11-08', '14:00:00', '15:00:00', 'in-person'),
+(1, '2025-11-09', '09:00:00', '10:00:00', 'virtual'),
+(1, '2025-11-10', '15:00:00', '16:00:00', 'in-person'),
 
--- Mike Johnson (Guitar/Bass) availability
-(2, '2024-01-15', '16:00:00', '17:00:00', 'virtual'),
-(2, '2024-01-16', '10:00:00', '11:00:00', 'virtual'),
-(2, '2024-01-17', '14:00:00', '15:00:00', 'virtual'),
-(2, '2024-01-18', '11:00:00', '12:00:00', 'virtual'),
+-- Mike Johnson (Guitar/Bass) availability - November 2025
+(2, '2025-11-01', '16:00:00', '17:00:00', 'virtual'),
+(2, '2025-11-02', '10:00:00', '11:00:00', 'virtual'),
+(2, '2025-11-03', '14:00:00', '15:00:00', 'virtual'),
+(2, '2025-11-04', '11:00:00', '12:00:00', 'virtual'),
+(2, '2025-11-07', '16:00:00', '17:00:00', 'virtual'),
+(2, '2025-11-08', '10:00:00', '11:00:00', 'virtual'),
+(2, '2025-11-09', '14:00:00', '15:00:00', 'virtual'),
+(2, '2025-11-10', '11:00:00', '12:00:00', 'virtual'),
 
--- Sarah Wilson (Violin/Viola) availability
-(3, '2024-01-15', '15:00:00', '16:00:00', 'virtual'),
-(3, '2024-01-15', '17:00:00', '18:00:00', 'in-person'),
-(3, '2024-01-16', '13:00:00', '14:00:00', 'virtual'),
-(3, '2024-01-17', '10:00:00', '11:00:00', 'in-person'),
-(3, '2024-01-18', '15:00:00', '16:00:00', 'virtual');
+-- Sarah Wilson (Violin/Viola) availability - November 2025
+(3, '2025-11-01', '15:00:00', '16:00:00', 'virtual'),
+(3, '2025-11-01', '17:00:00', '18:00:00', 'in-person'),
+(3, '2025-11-02', '13:00:00', '14:00:00', 'virtual'),
+(3, '2025-11-03', '10:00:00', '11:00:00', 'in-person'),
+(3, '2025-11-04', '15:00:00', '16:00:00', 'virtual'),
+(3, '2025-11-07', '15:00:00', '16:00:00', 'virtual'),
+(3, '2025-11-08', '17:00:00', '18:00:00', 'in-person'),
+(3, '2025-11-09', '13:00:00', '14:00:00', 'virtual'),
+(3, '2025-11-10', '10:00:00', '11:00:00', 'in-person');
 
--- Insert sample lessons (booked lessons)
+-- Insert sample lessons (booked lessons) - One lesson per student
 INSERT OR IGNORE INTO lessons (teacher_id, student_id, instrument, lesson_date, lesson_time, duration, lesson_type, status, notes, total_cost, teacher_earnings, fm_commission) VALUES
-(1, 1, 'piano', '2024-01-20', '10:00:00', 60, 'virtual', 'upcoming', 'Focus on Chopin Nocturne', 60.00, 54.00, 6.00),
-(2, 2, 'guitar', '2024-01-21', '14:00:00', 60, 'virtual', 'upcoming', 'Beginner chord progressions', 50.00, 45.00, 5.00),
-(3, 1, 'violin', '2024-01-22', '15:00:00', 90, 'in-person', 'upcoming', 'Advanced technique work', 105.00, 94.50, 10.50);
+-- John Doe (piano) with Jane Smith
+(1, 1, 'piano', '2025-11-05', '10:00:00', 60, 'virtual', 'upcoming', 'Focus on Chopin Nocturne', 60.00, 54.00, 6.00),
+-- Emily Davis (guitar) with Mike Johnson  
+(2, 2, 'guitar', '2025-11-06', '14:00:00', 60, 'virtual', 'upcoming', 'Beginner chord progressions', 50.00, 45.00, 5.00);
 
--- Insert sample payments
-INSERT OR IGNORE INTO payments (lesson_id, student_id, amount, payment_method, payment_status, transaction_id) VALUES
-(1, 1, 60.00, 'credit_card', 'completed', 'txn_001'),
-(2, 2, 50.00, 'credit_card', 'completed', 'txn_002'),
-(3, 1, 105.00, 'credit_card', 'pending', 'txn_003');
+-- Insert sample payments (using new schema) - One payment per lesson
+INSERT OR IGNORE INTO payments (lesson_id, student_id, teacher_id, payment_method_id, amount, platform_fee, teacher_earnings, status, transaction_id) VALUES
+(1, 1, 1, 1, 60.00, 6.00, 54.00, 'completed', 'txn_001'),
+(2, 2, 2, 2, 50.00, 5.00, 45.00, 'completed', 'txn_002');

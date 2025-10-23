@@ -10,6 +10,7 @@ let dashboardData = null;
 document.addEventListener('DOMContentLoaded', function() {
   console.log('Admin portal loaded, starting data fetch...');
   loadDashboardData();
+  loadTransactions();
 });
 
 // Load dashboard data from API
@@ -38,6 +39,76 @@ async function loadDashboardData() {
     console.error('Error loading dashboard data:', error);
     showAlert('Error loading dashboard data', 'danger');
   }
+}
+
+// Load transactions data
+async function loadTransactions() {
+  try {
+    console.log('Fetching transactions data from API...');
+    const response = await fetch('/api/admin/payments');
+    const result = await response.json();
+    
+    if (result.success) {
+      console.log('Transactions data loaded:', result);
+      renderTransactions(result.payments, result.revenue);
+    } else {
+      console.error('Failed to load transactions:', result.message);
+    }
+  } catch (error) {
+    console.error('Error loading transactions:', error);
+  }
+}
+
+// Render transactions table
+function renderTransactions(payments, revenue) {
+  console.log('renderTransactions called with:', { payments: payments?.length, revenue });
+  
+  // Update revenue summary
+  if (revenue) {
+    console.log('Updating revenue summary with:', revenue);
+    const totalRevenueElement = document.getElementById('totalRevenue');
+    if (totalRevenueElement) {
+      totalRevenueElement.textContent = `$${revenue.total_revenue ? revenue.total_revenue.toFixed(2) : '0.00'}`;
+    }
+    const totalTransactionsElement = document.getElementById('totalTransactions');
+    if (totalTransactionsElement) {
+      totalTransactionsElement.textContent = revenue.total_transactions || 0;
+    }
+    const avgFeeElement = document.getElementById('avgFee');
+    if (avgFeeElement) {
+      avgFeeElement.textContent = `$${revenue.avg_fee_per_transaction ? revenue.avg_fee_per_transaction.toFixed(2) : '0.00'}`;
+    }
+  } else {
+    console.log('No revenue data provided');
+  }
+
+  // Render transactions table
+  const tbody = document.querySelector('#transactionsTable tbody');
+  
+  if (!payments || payments.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No transactions yet</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = payments.map(payment => `
+    <tr>
+      <td>${formatDate(payment.payment_date)}</td>
+      <td><code>${payment.transaction_id}</code></td>
+      <td>${payment.student_name}</td>
+      <td>${payment.teacher_name}</td>
+      <td>${payment.instrument} - ${payment.lesson_type}</td>
+      <td>$${payment.amount.toFixed(2)}</td>
+      <td>$${payment.platform_fee.toFixed(2)}</td>
+      <td>$${payment.teacher_earnings.toFixed(2)}</td>
+      <td><span class="badge bg-success">${payment.status}</span></td>
+    </tr>
+  `).join('');
+}
+
+// Format date helper
+function formatDate(dateString) {
+  const date = new Date(dateString);
+  return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 }
 
 function initializeDashboard() {
