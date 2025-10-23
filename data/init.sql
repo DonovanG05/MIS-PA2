@@ -121,10 +121,33 @@ CREATE TABLE IF NOT EXISTS lesson_completions (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Recurring lessons table
+CREATE TABLE IF NOT EXISTS recurring_lessons (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    teacher_id INTEGER REFERENCES teachers(teacherID) ON DELETE CASCADE,
+    student_id INTEGER REFERENCES students(studentID) ON DELETE CASCADE,
+    instrument TEXT NOT NULL,
+    day_of_week INTEGER NOT NULL CHECK(day_of_week >= 0 AND day_of_week <= 6), -- 0=Sunday, 1=Monday, etc.
+    start_time TIME NOT NULL,
+    duration INTEGER NOT NULL, -- minutes
+    lesson_type TEXT CHECK(lesson_type IN ('virtual', 'in-person')),
+    frequency TEXT CHECK(frequency IN ('weekly', 'biweekly', 'monthly')) DEFAULT 'weekly',
+    status TEXT CHECK(status IN ('active', 'paused', 'cancelled')) DEFAULT 'active',
+    notes TEXT,
+    sheet_music_urls TEXT, -- JSON array of file URLs
+    total_cost DECIMAL(10,2),
+    teacher_earnings DECIMAL(10,2), -- After FM commission
+    fm_commission DECIMAL(10,2), -- FM's cut
+    next_lesson_date DATE, -- Next scheduled lesson date
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Payments table
 CREATE TABLE IF NOT EXISTS payments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     lesson_id INTEGER REFERENCES lessons(id) ON DELETE CASCADE,
+    recurring_lesson_id INTEGER REFERENCES recurring_lessons(id) ON DELETE SET NULL,
     student_id INTEGER REFERENCES students(studentID) ON DELETE CASCADE,
     teacher_id INTEGER REFERENCES teachers(teacherID) ON DELETE CASCADE,
     payment_method_id INTEGER REFERENCES payment_methods(id) ON DELETE SET NULL,
@@ -154,3 +177,7 @@ CREATE INDEX IF NOT EXISTS idx_payments_lesson_id ON payments(lesson_id);
 CREATE INDEX IF NOT EXISTS idx_payments_student_id ON payments(student_id);
 CREATE INDEX IF NOT EXISTS idx_payments_teacher_id ON payments(teacher_id);
 CREATE INDEX IF NOT EXISTS idx_payments_date ON payments(payment_date);
+CREATE INDEX IF NOT EXISTS idx_recurring_lessons_teacher_id ON recurring_lessons(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_recurring_lessons_student_id ON recurring_lessons(student_id);
+CREATE INDEX IF NOT EXISTS idx_recurring_lessons_status ON recurring_lessons(status);
+CREATE INDEX IF NOT EXISTS idx_recurring_lessons_next_date ON recurring_lessons(next_lesson_date);

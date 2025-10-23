@@ -134,23 +134,27 @@ function initializeDashboard() {
   const totalUsers = dashboardData.users.total_users || 0;
   const totalBookings = dashboardData.lessons.total_lessons || 0;
   const repeatStudents = dashboardData.repeatStudents || 0;
+  const recurringLessons = dashboardData.recurringStats?.active_recurring || 0;
   
-  console.log('Updating stats:', { totalUsers, totalBookings, repeatStudents });
+  console.log('Updating stats:', { totalUsers, totalBookings, repeatStudents, recurringLessons });
   
   // Update elements
   const totalUsersEl = document.getElementById('totalUsers');
   const totalBookingsEl = document.getElementById('totalBookings');
   const repeatStudentsEl = document.getElementById('repeatStudents');
+  const recurringLessonsEl = document.getElementById('recurringLessons');
   
   console.log('Elements found:', {
     totalUsers: !!totalUsersEl,
     totalBookings: !!totalBookingsEl,
-    repeatStudents: !!repeatStudentsEl
+    repeatStudents: !!repeatStudentsEl,
+    recurringLessons: !!recurringLessonsEl
   });
   
   if (totalUsersEl) totalUsersEl.textContent = totalUsers;
   if (totalBookingsEl) totalBookingsEl.textContent = totalBookings;
   if (repeatStudentsEl) repeatStudentsEl.textContent = repeatStudents;
+  if (recurringLessonsEl) recurringLessonsEl.textContent = recurringLessons;
 }
 
 function initializeCharts() {

@@ -950,6 +950,223 @@ app.get('/api/admin/repeat-lessons-report', async (req, res) => {
   }
 });
 
+// ==================== RECURRING LESSONS API ENDPOINTS ====================
+
+// Get teacher's recurring slots
+app.get('/api/teacher/:teacherId/recurring-lessons', async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const lessons = await db.getTeacherRecurringSlots(teacherId);
+    
+    res.json({
+      success: true,
+      lessons: lessons
+    });
+  } catch (error) {
+    console.error('Get teacher recurring lessons error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get recurring lessons',
+      error: error.message
+    });
+  }
+});
+
+// Add recurring slot (teacher creates available slot)
+app.post('/api/teacher/:teacherId/recurring-slots', async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const slotData = req.body;
+    
+    const result = await db.addRecurringSlot(teacherId, slotData);
+    
+    res.json({
+      success: true,
+      message: 'Recurring slot added successfully',
+      slot_id: result.lastID
+    });
+  } catch (error) {
+    console.error('Add recurring slot error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add recurring slot',
+      error: error.message
+    });
+  }
+});
+
+// Get available recurring slots (for students to book)
+app.get('/api/recurring-slots/available', async (req, res) => {
+  try {
+    const slots = await db.getAvailableRecurringSlots();
+    
+    res.json({
+      success: true,
+      slots: slots
+    });
+  } catch (error) {
+    console.error('Get available recurring slots error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get available recurring slots',
+      error: error.message
+    });
+  }
+});
+
+// Book recurring slot (student books an available slot)
+app.post('/api/recurring-lessons/book', async (req, res) => {
+  try {
+    const { slot_id, student_id, start_date, frequency, notes } = req.body;
+    
+    const result = await db.bookRecurringSlot(slot_id, student_id, start_date, frequency, notes);
+    
+    res.json({
+      success: true,
+      message: 'Recurring lesson booked successfully'
+    });
+  } catch (error) {
+    console.error('Book recurring lesson error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to book recurring lesson',
+      error: error.message
+    });
+  }
+});
+
+// Get student's recurring lessons
+app.get('/api/student/:studentId/recurring-lessons', async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const lessons = await db.getStudentRecurringLessons(studentId);
+    
+    res.json({
+      success: true,
+      lessons: lessons
+    });
+  } catch (error) {
+    console.error('Get student recurring lessons error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get recurring lessons',
+      error: error.message
+    });
+  }
+});
+
+// Confirm recurring lesson (teacher confirms lesson occurred)
+app.post('/api/recurring-lessons/:recurringId/confirm', async (req, res) => {
+  try {
+    const { recurringId } = req.params;
+    
+    const result = await db.confirmRecurringLesson(recurringId);
+    
+    res.json({
+      success: true,
+      message: 'Recurring lesson confirmed and payment processed'
+    });
+  } catch (error) {
+    console.error('Confirm recurring lesson error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to confirm recurring lesson',
+      error: error.message
+    });
+  }
+});
+
+// Pause recurring lesson
+app.put('/api/recurring-lessons/:recurringId/pause', async (req, res) => {
+  try {
+    const { recurringId } = req.params;
+    
+    await db.pauseRecurringLesson(recurringId);
+    
+    res.json({
+      success: true,
+      message: 'Recurring lesson paused'
+    });
+  } catch (error) {
+    console.error('Pause recurring lesson error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to pause recurring lesson',
+      error: error.message
+    });
+  }
+});
+
+// Resume recurring lesson
+app.put('/api/recurring-lessons/:recurringId/resume', async (req, res) => {
+  try {
+    const { recurringId } = req.params;
+    
+    await db.resumeRecurringLesson(recurringId);
+    
+    res.json({
+      success: true,
+      message: 'Recurring lesson resumed'
+    });
+  } catch (error) {
+    console.error('Resume recurring lesson error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to resume recurring lesson',
+      error: error.message
+    });
+  }
+});
+
+// Cancel recurring lesson
+app.put('/api/recurring-lessons/:recurringId/cancel', async (req, res) => {
+  try {
+    const { recurringId } = req.params;
+    
+    await db.cancelRecurringLesson(recurringId);
+    
+    res.json({
+      success: true,
+      message: 'Recurring lesson cancelled'
+    });
+  } catch (error) {
+    console.error('Cancel recurring lesson error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to cancel recurring lesson',
+      error: error.message
+    });
+  }
+});
+
+// Delete recurring slot (teacher deletes unbooked slot)
+app.delete('/api/recurring-lessons/:recurringId', async (req, res) => {
+  try {
+    const { recurringId } = req.params;
+    
+    const result = await db.deleteRecurringSlot(recurringId);
+    
+    if (result.changes === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete slot that is booked by a student'
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Recurring slot deleted'
+    });
+  } catch (error) {
+    console.error('Delete recurring slot error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete recurring slot',
+      error: error.message
+    });
+  }
+});
+
 // Serve static files
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'homepage.html'));

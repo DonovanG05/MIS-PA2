@@ -36,6 +36,36 @@ A comprehensive web platform connecting music teachers and students for online a
    - **Teacher Portal**: http://localhost:3000/teacher-portal
    - **Student Portal**: http://localhost:3000/student-portal
 
+**Note**: Test accounts are created automatically when you first start the server. See the Test Accounts section below for login credentials.
+
+## 🧪 Test Accounts
+
+For quick testing and demonstration, you can use these pre-configured accounts. However, we **encourage you to create your own accounts** to get the full personalized experience of the platform:
+
+### **Student Account**
+- **Email**: student@test.com
+- **Password**: password123
+- **Features**: Can book lessons, upload sheet music, view lesson history
+
+### **Teacher Account**
+- **Email**: teacher@test.com
+- **Password**: password123
+- **Features**: Can create availability, manage lessons, view earnings
+
+### **Admin Account**
+- **Email**: admin@test.com
+- **Password**: password123
+- **Features**: Full administrative access to all platform features
+
+**Note**: These accounts are created automatically when you first start the server. If you need to reset them, delete the `freelance_music.db` file and restart the server.
+
+### **Why Create Your Own Account?**
+- **Personalized Experience**: Set up your own profile, preferences, and learning goals
+- **Real Data**: See how the platform works with your actual information
+- **Full Feature Access**: Experience the complete registration and onboarding process
+- **Custom Settings**: Configure your own rates, availability, and teaching preferences
+- **Authentic Testing**: Test the platform as a real user would experience it
+
 ## 🎯 Features Overview
 
 ### 👨‍🎓 Student Features
@@ -66,6 +96,14 @@ A comprehensive web platform connecting music teachers and students for online a
 - **Status Updates**: Real-time lesson status (upcoming, completed, cancelled)
 - **Sheet Music Upload**: Upload PDF, JPG, or PNG files when booking lessons for teacher review
 
+#### **Recurring Lessons**
+- **Browse Recurring Slots**: View all available recurring lesson time slots from teachers
+- **Frequency Selection**: Choose how often you want lessons (weekly, bi-weekly, monthly)
+- **Start Date Control**: Specify when you want to begin your recurring lessons
+- **My Recurring Lessons**: Manage all your active recurring lesson subscriptions
+- **Flexible Management**: Pause, resume, or cancel recurring lessons at any time
+- **Automatic Billing**: Payment automatically processed when teacher confirms each lesson
+
 #### **Payment System**
 - **Credit Card Management**: Add and manage payment methods
 - **Secure Processing**: Validated credit card storage and processing
@@ -94,6 +132,14 @@ A comprehensive web platform connecting music teachers and students for online a
 - **Lesson History**: Track all past lessons and earnings
 - **Sheet Music Access**: View and download student-uploaded sheet music files for each lesson
 
+#### **Recurring Lessons**
+- **Create Recurring Slots**: Set up "always available" time slots for recurring lessons
+- **Time Commitment**: Commit to being available at specific times every week
+- **Student Booking Management**: View and manage students who book your recurring slots
+- **Lesson Confirmation**: Confirm when recurring lessons occur to process payments
+- **Flexible Management**: Pause or delete recurring slots as needed
+- **Revenue Tracking**: Monitor earnings from recurring lesson subscriptions
+
 #### **Financial Management**
 - **Earnings Tracking**: View net earnings after platform fees (90% of lesson cost)
 - **Payment History**: Detailed records of all completed lessons and payments
@@ -111,6 +157,7 @@ A comprehensive web platform connecting music teachers and students for online a
 #### **Dashboard Overview**
 - **User Statistics**: Total users, teachers, students, and lesson counts
 - **Revenue Analytics**: Platform revenue tracking and financial overview
+- **Recurring Lessons**: Monitor active recurring lesson subscriptions
 - **System Health**: Monitor active users and system performance
 
 #### **Financial Management**
@@ -122,10 +169,10 @@ A comprehensive web platform connecting music teachers and students for online a
 #### **Advanced Analytics & Reporting**
 
 ##### **Revenue Analysis**
-- **Platform Revenue**: Total earnings from 10% platform fees
+- **Platform Revenue**: Total earnings from 10% platform fees (includes both regular and recurring lessons)
 - **Revenue by Quarter**: Quarterly breakdown of platform earnings
-- **Revenue by Instrument**: Pie chart showing earnings by instrument type
-- **Revenue by Student**: Individual student contribution to platform revenue
+- **Revenue by Instrument**: Pie chart showing earnings by instrument type (includes recurring lessons)
+- **Revenue by Student**: Individual student contribution to platform revenue (includes recurring subscriptions)
 
 ##### **Student Analytics**
 - **Referral Sources**: Bar chart showing how students discovered the platform
@@ -323,26 +370,7 @@ For testing teacher bank account setup:
 3. **Book Lessons**: Student books lessons with credit card
 4. **Complete Lessons**: Teacher marks lessons as completed
 5. **Verify Payments**: Check payment processing and fee distribution
-
-### **Test Accounts**
-For quick testing and demonstration, you can use these pre-configured accounts:
-
-#### **Student Account**
-- **Email**: student@test.com
-- **Password**: password123
-- **Features**: Can book lessons, upload sheet music, view lesson history
-
-#### **Teacher Account**
-- **Email**: teacher@test.com
-- **Password**: password123
-- **Features**: Can set availability, view booked lessons, access sheet music, complete lessons
-
-#### **Admin Account**
-- **Email**: admin@test.com
-- **Password**: password123
-- **Features**: Full access to all analytics, reports, and system management
-
-**Note**: These accounts are created automatically when you first start the server. If you need to reset them, delete the `freelance_music.db` file and restart the server.
+6. **Test Recurring Lessons**: Create recurring slots as a teacher and book them as a student
 
 ## 🔧 Development
 

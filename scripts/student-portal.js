@@ -925,3 +925,355 @@ document.addEventListener('DOMContentLoaded', function() {
   setupPaymentMethodToggle();
   // renderCalendar() is now called after loadAvailableLessons() completes
 });
+
+// ==================== RECURRING LESSONS FUNCTIONALITY ====================
+
+let availableRecurringSlots = [];
+let myRecurringLessons = [];
+
+// Load available recurring slots
+async function loadAvailableRecurringSlots() {
+  try {
+    const response = await fetch('/api/recurring-slots/available');
+    const result = await response.json();
+    
+    if (result.success) {
+      availableRecurringSlots = result.slots || [];
+      updateAvailableRecurringTable();
+    } else {
+      console.error('Failed to load available recurring slots:', result.message);
+    }
+  } catch (error) {
+    console.error('Error loading available recurring slots:', error);
+  }
+}
+
+// Load student's recurring lessons
+async function loadStudentRecurringLessons() {
+  try {
+    const student = await getStudentByUserId(currentUserId);
+    if (!student) {
+      console.error('Student not found');
+      return;
+    }
+    const studentId = student.studentID;
+    
+    const response = await fetch(`/api/student/${studentId}/recurring-lessons`);
+    const result = await response.json();
+    
+    if (result.success) {
+      myRecurringLessons = result.lessons || [];
+      updateStudentRecurringLessonsTable();
+      updateStudentRecurringSummary();
+    } else {
+      console.error('Failed to load recurring lessons:', result.message);
+    }
+  } catch (error) {
+    console.error('Error loading recurring lessons:', error);
+  }
+}
+
+// Update available recurring slots table
+function updateAvailableRecurringTable() {
+  const tbody = document.querySelector('#availableRecurringTable tbody');
+  
+  if (!tbody) return;
+  
+  if (availableRecurringSlots.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No recurring slots available</td></tr>';
+    return;
+  }
+  
+  tbody.innerHTML = availableRecurringSlots.map(slot => {
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayName = dayNames[slot.day_of_week];
+    const time = formatTime(slot.start_time);
+    
+    return `
+      <tr>
+        <td>${slot.teacher_name}</td>
+        <td>${slot.instrument}</td>
+        <td>${dayName} at ${time}</td>
+        <td><span class="badge bg-info">${slot.frequency}</span></td>
+        <td><span class="badge bg-${slot.lesson_type === 'virtual' ? 'primary' : 'success'}">${slot.lesson_type}</span></td>
+        <td>${slot.duration} min</td>
+        <td>$${slot.rate_per_hour || 'TBD'}</td>
+        <td>
+          <button class="btn btn-primary btn-sm" onclick="bookRecurringSlot(${slot.id})">
+            <i class="bi bi-bookmark-plus me-1"></i>Book
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// Update student's recurring lessons table
+function updateStudentRecurringLessonsTable() {
+  const tbody = document.querySelector('#studentRecurringLessonsTable tbody');
+  
+  if (!tbody) return;
+  
+  if (myRecurringLessons.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">No recurring lessons scheduled</td></tr>';
+    return;
+  }
+  
+  tbody.innerHTML = myRecurringLessons.map(lesson => {
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayName = dayNames[lesson.day_of_week];
+    const time = formatTime(lesson.start_time);
+    const nextLesson = lesson.next_lesson_date ? formatDate(lesson.next_lesson_date) : 'Not scheduled';
+    
+    return `
+      <tr>
+        <td>${lesson.teacher_name}</td>
+        <td>${lesson.instrument}</td>
+        <td>${dayName} at ${time}</td>
+        <td><span class="badge bg-info">${lesson.frequency}</span></td>
+        <td><span class="badge bg-${lesson.lesson_type === 'virtual' ? 'primary' : 'success'}">${lesson.lesson_type}</span></td>
+        <td>${lesson.duration} min</td>
+        <td>$${lesson.total_cost || 'TBD'}</td>
+        <td><span class="badge bg-${getRecurringStatusColor(lesson.status)}">${lesson.status}</span></td>
+        <td>${nextLesson}</td>
+        <td>
+          <div class="btn-group btn-group-sm">
+            ${lesson.status === 'active' ? `
+              <button class="btn btn-outline-warning" onclick="pauseRecurringLesson(${lesson.id})" title="Pause">
+                <i class="bi bi-pause-circle"></i>
+              </button>
+              <button class="btn btn-outline-danger" onclick="cancelRecurringLesson(${lesson.id})" title="Cancel">
+                <i class="bi bi-x-circle"></i>
+              </button>
+            ` : lesson.status === 'paused' ? `
+              <button class="btn btn-outline-success" onclick="resumeRecurringLesson(${lesson.id})" title="Resume">
+                <i class="bi bi-play-circle"></i>
+              </button>
+              <button class="btn btn-outline-danger" onclick="cancelRecurringLesson(${lesson.id})" title="Cancel">
+                <i class="bi bi-x-circle"></i>
+              </button>
+            ` : `
+              <span class="text-muted">Cancelled</span>
+            `}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// Update student recurring summary
+function updateStudentRecurringSummary() {
+  const activeCount = myRecurringLessons.filter(l => l.status === 'active').length;
+  const monthlyCost = myRecurringLessons
+    .filter(l => l.status === 'active')
+    .reduce((sum, l) => {
+      const frequency = l.frequency;
+      const cost = l.total_cost || 0;
+      let multiplier = 1;
+      
+      if (frequency === 'weekly') multiplier = 4.33; // Average weeks per month
+      else if (frequency === 'biweekly') multiplier = 2.17; // Average bi-weeks per month
+      else if (frequency === 'monthly') multiplier = 1;
+      
+      return sum + (cost * multiplier);
+    }, 0);
+  
+  const nextLesson = myRecurringLessons
+    .filter(l => l.status === 'active' && l.next_lesson_date)
+    .sort((a, b) => new Date(a.next_lesson_date) - new Date(b.next_lesson_date))[0];
+  
+  document.getElementById('studentActiveRecurringCount').textContent = activeCount;
+  document.getElementById('monthlyRecurringCost').textContent = `$${monthlyCost.toFixed(2)}`;
+  document.getElementById('studentNextRecurringLesson').textContent = nextLesson ? formatDate(nextLesson.next_lesson_date) : 'None';
+}
+
+// Book recurring slot
+function bookRecurringSlot(slotId) {
+  const slot = availableRecurringSlots.find(s => s.id === slotId);
+  if (!slot) return;
+  
+  // Populate modal
+  document.getElementById('recurringBookingTeacher').value = slot.teacher_name;
+  document.getElementById('recurringBookingInstrument').value = slot.instrument;
+  
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const dayName = dayNames[slot.day_of_week];
+  const time = formatTime(slot.start_time);
+  document.getElementById('recurringBookingSchedule').value = `${dayName} at ${time}`;
+  
+  document.getElementById('recurringBookingDuration').value = `${slot.duration} minutes`;
+  document.getElementById('recurringBookingType').value = slot.lesson_type;
+  document.getElementById('recurringBookingRate').value = `$${slot.rate_per_hour || 'TBD'}/hour`;
+  
+  // Set minimum start date to tomorrow
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  document.getElementById('recurringStartDate').min = tomorrow.toISOString().split('T')[0];
+  document.getElementById('recurringStartDate').value = tomorrow.toISOString().split('T')[0];
+  
+  // Store slot ID for booking
+  document.getElementById('recurringBookingForm').dataset.slotId = slotId;
+  
+  // Show modal
+  const modal = new bootstrap.Modal(document.getElementById('recurringBookingModal'));
+  modal.show();
+}
+
+// Confirm recurring booking
+async function confirmRecurringBooking() {
+  const form = document.getElementById('recurringBookingForm');
+  if (!form.checkValidity()) {
+    form.reportValidity();
+    return;
+  }
+  
+  const slotId = form.dataset.slotId;
+  const startDate = document.getElementById('recurringStartDate').value;
+  const frequency = document.getElementById('recurringFrequency').value;
+  const notes = document.getElementById('recurringBookingNotes').value;
+  
+  try {
+    const student = await getStudentByUserId(currentUserId);
+    if (!student) {
+      showAlert('Student profile not found', 'danger');
+      return;
+    }
+    const studentId = student.studentID;
+    
+    const response = await fetch('/api/recurring-lessons/book', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        slot_id: slotId,
+        student_id: studentId,
+        start_date: startDate,
+        frequency: frequency,
+        notes: notes
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      showAlert('Recurring lesson booked successfully!', 'success');
+      bootstrap.Modal.getInstance(document.getElementById('recurringBookingModal')).hide();
+      loadAvailableRecurringSlots();
+      loadStudentRecurringLessons();
+    } else {
+      showAlert(result.message || 'Failed to book recurring lesson', 'danger');
+    }
+  } catch (error) {
+    console.error('Error booking recurring lesson:', error);
+    showAlert('Error booking recurring lesson', 'danger');
+  }
+}
+
+// Pause recurring lesson
+async function pauseRecurringLesson(recurringId) {
+  if (!confirm('Pause this recurring lesson? You can resume it later.')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/api/recurring-lessons/${recurringId}/pause`, {
+      method: 'PUT'
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      showAlert('Recurring lesson paused', 'info');
+      loadStudentRecurringLessons();
+    } else {
+      showAlert(result.message || 'Failed to pause lesson', 'danger');
+    }
+  } catch (error) {
+    console.error('Error pausing recurring lesson:', error);
+    showAlert('Error pausing lesson', 'danger');
+  }
+}
+
+// Resume recurring lesson
+async function resumeRecurringLesson(recurringId) {
+  try {
+    const response = await fetch(`/api/recurring-lessons/${recurringId}/resume`, {
+      method: 'PUT'
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      showAlert('Recurring lesson resumed', 'success');
+      loadStudentRecurringLessons();
+    } else {
+      showAlert(result.message || 'Failed to resume lesson', 'danger');
+    }
+  } catch (error) {
+    console.error('Error resuming recurring lesson:', error);
+    showAlert('Error resuming lesson', 'danger');
+  }
+}
+
+// Cancel recurring lesson
+async function cancelRecurringLesson(recurringId) {
+  if (!confirm('Cancel this recurring lesson? This action cannot be undone.')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/api/recurring-lessons/${recurringId}/cancel`, {
+      method: 'PUT'
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      showAlert('Recurring lesson cancelled', 'info');
+      loadStudentRecurringLessons();
+    } else {
+      showAlert(result.message || 'Failed to cancel lesson', 'danger');
+    }
+  } catch (error) {
+    console.error('Error cancelling recurring lesson:', error);
+    showAlert('Error cancelling lesson', 'danger');
+  }
+}
+
+// Refresh student recurring lessons
+function refreshStudentRecurringLessons() {
+  loadAvailableRecurringSlots();
+  loadStudentRecurringLessons();
+}
+
+// Helper functions
+function getRecurringStatusColor(status) {
+  switch (status) {
+    case 'active': return 'success';
+    case 'paused': return 'warning';
+    case 'cancelled': return 'danger';
+    default: return 'secondary';
+  }
+}
+
+function formatTime(timeString) {
+  const [hours, minutes] = timeString.split(':');
+  const hour = parseInt(hours);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${minutes} ${ampm}`;
+}
+
+// Update tab switching to load recurring lessons
+document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+  tab.addEventListener('shown.bs.tab', function(event) {
+    const target = event.target.getAttribute('href');
+    
+    if (target === '#recurring') {
+      loadAvailableRecurringSlots();
+      loadStudentRecurringLessons();
+    }
+  });
+});

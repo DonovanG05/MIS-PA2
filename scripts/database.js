@@ -529,15 +529,15 @@ class Database {
     return await this.all(sql, [currentDate]);
   }
 
-  // Get revenue statistics
+  // Get revenue statistics (includes both regular and recurring lessons)
   async getRevenueStats() {
     const sql = `
       SELECT 
-        SUM(total_cost) as total_revenue,
-        SUM(fm_commission) as total_commission,
+        SUM(amount) as total_revenue,
+        SUM(platform_fee) as total_commission,
         SUM(teacher_earnings) as total_teacher_earnings,
         COUNT(*) as total_lessons
-      FROM lessons 
+      FROM payments 
       WHERE status = 'completed'
     `;
     return await this.get(sql);
@@ -566,7 +566,7 @@ class Database {
         FROM lessons
       `);
 
-      // Get revenue data from payments table (platform fees only)
+      // Get revenue data from payments table (platform fees only) - includes both regular and recurring lessons
       const revenueData = await this.get(`
         SELECT 
           COALESCE(SUM(platform_fee), 0) as total_revenue,
@@ -576,43 +576,52 @@ class Database {
         WHERE status = 'completed'
       `);
 
-      // Get popular instruments (excluding 'mixed') - using platform fees
+      // Get recurring lesson statistics
+      const recurringStats = await this.get(`
+        SELECT 
+          COUNT(*) as total_recurring_lessons,
+          SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_recurring,
+          SUM(CASE WHEN student_id IS NOT NULL THEN 1 ELSE 0 END) as booked_recurring
+        FROM recurring_lessons
+      `);
+
+      // Get popular instruments (excluding 'mixed') - using platform fees from both regular and recurring lessons
       const popularInstruments = await this.all(`
         SELECT 
-          l.instrument,
+          COALESCE(l.instrument, rl.instrument) as instrument,
           COUNT(*) as lesson_count,
           SUM(p.platform_fee) as revenue
-        FROM lessons l
-        JOIN payments p ON l.id = p.lesson_id
-        WHERE l.status IN ('upcoming', 'completed') 
-        AND l.instrument IS NOT NULL 
-        AND l.instrument != 'mixed'
-        AND p.status = 'completed'
-        GROUP BY l.instrument
+        FROM payments p
+        LEFT JOIN lessons l ON p.lesson_id = l.id
+        LEFT JOIN recurring_lessons rl ON p.recurring_lesson_id = rl.id
+        WHERE p.status = 'completed'
+        AND COALESCE(l.instrument, rl.instrument) IS NOT NULL 
+        AND COALESCE(l.instrument, rl.instrument) != 'mixed'
+        GROUP BY COALESCE(l.instrument, rl.instrument)
         ORDER BY lesson_count DESC
         LIMIT 5
       `);
 
-      // Get revenue by student (showing both total spent and platform fees)
+      // Get revenue by student (showing both total spent and platform fees from both regular and recurring lessons)
       const revenueByStudent = await this.all(`
         SELECT 
           us.name as student_name,
           COUNT(*) as lesson_count,
-          SUM(l.total_cost) as total_spent,
+          SUM(COALESCE(l.total_cost, rl.total_cost)) as total_spent,
           SUM(p.platform_fee) as platform_fee
-        FROM lessons l
-        JOIN payments p ON l.id = p.lesson_id
-        JOIN students s ON l.student_id = s.studentID
+        FROM payments p
+        LEFT JOIN lessons l ON p.lesson_id = l.id
+        LEFT JOIN recurring_lessons rl ON p.recurring_lesson_id = rl.id
+        JOIN students s ON p.student_id = s.studentID
         JOIN users us ON s.user_id = us.id
-        WHERE l.status IN ('upcoming', 'completed') 
-        AND p.status = 'completed'
+        WHERE p.status = 'completed'
         GROUP BY us.name, s.studentID
         HAVING SUM(p.platform_fee) > 0
         ORDER BY platform_fee DESC
         LIMIT 10
       `);
 
-      // Get revenue by quarter (using platform fees from payments table)
+      // Get revenue by quarter (using platform fees from payments table - includes both regular and recurring lessons)
       const currentYear = new Date().getFullYear();
       const quarterlyRevenue = await this.all(`
         SELECT 
@@ -624,7 +633,6 @@ class Database {
           END as quarter,
           SUM(p.platform_fee) as revenue
         FROM payments p
-        JOIN lessons l ON p.lesson_id = l.id
         WHERE strftime('%Y', p.payment_date) = ? AND p.status = 'completed'
         GROUP BY quarter
         ORDER BY quarter
@@ -661,6 +669,7 @@ class Database {
         users: userCounts,
         lessons: lessonCounts,
         revenue: revenueData,
+        recurringStats,
         popularInstruments,
         revenueByStudent,
         quarterlyRevenue,
@@ -1098,6 +1107,266 @@ class Database {
       ORDER BY p.payment_date DESC
     `;
     return await this.all(sql, [studentId]);
+  }
+
+  // ==================== RECURRING LESSONS METHODS ====================
+
+  // Add recurring slot (teacher creates always-available slot)
+  async addRecurringSlot(teacherId, slotData) {
+    const sql = `
+      INSERT INTO recurring_lessons (
+        teacher_id, instrument, day_of_week, start_time, duration, 
+        lesson_type, frequency, notes, status, student_id
+      ) VALUES (?, ?, ?, ?, ?, ?, 'weekly', ?, 'active', NULL)
+    `;
+    
+    const params = [
+      teacherId,
+      slotData.instrument,
+      slotData.day_of_week,
+      slotData.start_time,
+      slotData.duration,
+      slotData.lesson_type,
+      slotData.notes || null
+    ];
+    
+    return await this.run(sql, params);
+  }
+
+  // Get teacher's recurring slots
+  async getTeacherRecurringSlots(teacherId) {
+    const sql = `
+      SELECT 
+        rl.*,
+        u.name as teacher_name,
+        s.studentID,
+        us.name as student_name
+      FROM recurring_lessons rl
+      JOIN teachers t ON rl.teacher_id = t.teacherID
+      JOIN users u ON t.user_id = u.id
+      LEFT JOIN students s ON rl.student_id = s.studentID
+      LEFT JOIN users us ON s.user_id = us.id
+      WHERE rl.teacher_id = ?
+      ORDER BY rl.day_of_week, rl.start_time
+    `;
+    
+    return await this.all(sql, [teacherId]);
+  }
+
+  // Get available recurring slots (not booked by any student)
+  async getAvailableRecurringSlots() {
+    const sql = `
+      SELECT 
+        rl.*,
+        u.name as teacher_name,
+        t.rate_per_hour
+      FROM recurring_lessons rl
+      JOIN teachers t ON rl.teacher_id = t.teacherID
+      JOIN users u ON t.user_id = u.id
+      WHERE rl.student_id IS NULL AND rl.status = 'active'
+      ORDER BY rl.day_of_week, rl.start_time
+    `;
+    
+    return await this.all(sql);
+  }
+
+  // Book recurring slot (student books an available slot)
+  async bookRecurringSlot(slotId, studentId, startDate, frequency, notes) {
+    // Calculate pricing
+    const slot = await this.get('SELECT * FROM recurring_lessons WHERE id = ?', [slotId]);
+    const teacher = await this.get('SELECT rate_per_hour FROM teachers WHERE teacherID = ?', [slot.teacher_id]);
+    
+    const totalCost = (teacher.rate_per_hour * slot.duration) / 60;
+    const platformFee = totalCost * 0.1;
+    const teacherEarnings = totalCost - platformFee;
+    
+    // Calculate next lesson date using student's chosen frequency
+    const nextLessonDate = this.calculateNextLessonDate(startDate, slot.day_of_week, frequency);
+    
+    const sql = `
+      UPDATE recurring_lessons 
+      SET 
+        student_id = ?,
+        frequency = ?,
+        total_cost = ?,
+        teacher_earnings = ?,
+        fm_commission = ?,
+        next_lesson_date = ?,
+        notes = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `;
+    
+    const params = [
+      studentId,
+      frequency,
+      totalCost,
+      teacherEarnings,
+      platformFee,
+      nextLessonDate,
+      notes || null,
+      slotId
+    ];
+    
+    return await this.run(sql, params);
+  }
+
+  // Get student's recurring lessons
+  async getStudentRecurringLessons(studentId) {
+    const sql = `
+      SELECT 
+        rl.*,
+        u.name as teacher_name
+      FROM recurring_lessons rl
+      JOIN teachers t ON rl.teacher_id = t.teacherID
+      JOIN users u ON t.user_id = u.id
+      WHERE rl.student_id = ?
+      ORDER BY rl.day_of_week, rl.start_time
+    `;
+    
+    return await this.all(sql, [studentId]);
+  }
+
+  // Confirm recurring lesson (teacher confirms lesson occurred)
+  async confirmRecurringLesson(recurringId) {
+    const recurring = await this.get('SELECT * FROM recurring_lessons WHERE id = ?', [recurringId]);
+    if (!recurring || !recurring.student_id) {
+      throw new Error('Recurring lesson not found or not booked');
+    }
+
+    // Get student's primary payment method
+    const student = await this.get('SELECT user_id FROM students WHERE studentID = ?', [recurring.student_id]);
+    const paymentMethod = await this.get(`
+      SELECT * FROM payment_methods 
+      WHERE user_id = ? AND is_primary = 1 AND is_verified = 1
+      ORDER BY created_at DESC LIMIT 1
+    `, [student.user_id]);
+
+    if (!paymentMethod) {
+      throw new Error('Student has no verified payment method');
+    }
+
+    // Generate transaction ID
+    const transactionId = `REC_${Date.now()}_${recurringId}`;
+
+    // Create payment record
+    const paymentSql = `
+      INSERT INTO payments (
+        recurring_lesson_id, student_id, teacher_id, payment_method_id, 
+        amount, platform_fee, teacher_earnings, status, transaction_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'completed', ?)
+    `;
+    
+    const paymentParams = [
+      recurringId,
+      recurring.student_id,
+      recurring.teacher_id,
+      paymentMethod.id,
+      recurring.total_cost,
+      recurring.fm_commission,
+      recurring.teacher_earnings,
+      transactionId
+    ];
+    
+    await this.run(paymentSql, paymentParams);
+    
+    // Update next lesson date
+    const nextLessonDate = this.calculateNextLessonDate(
+      recurring.next_lesson_date, 
+      recurring.day_of_week, 
+      recurring.frequency
+    );
+    
+    const updateSql = `
+      UPDATE recurring_lessons 
+      SET next_lesson_date = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `;
+    
+    await this.run(updateSql, [nextLessonDate, recurringId]);
+    
+    return { 
+      success: true, 
+      next_lesson_date: nextLessonDate,
+      transaction_id: transactionId,
+      amount_charged: recurring.total_cost,
+      teacher_earnings: recurring.teacher_earnings,
+      platform_fee: recurring.fm_commission
+    };
+  }
+
+  // Pause recurring lesson
+  async pauseRecurringLesson(recurringId) {
+    const sql = `
+      UPDATE recurring_lessons 
+      SET status = 'paused', updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `;
+    
+    return await this.run(sql, [recurringId]);
+  }
+
+  // Resume recurring lesson
+  async resumeRecurringLesson(recurringId) {
+    const sql = `
+      UPDATE recurring_lessons 
+      SET status = 'active', updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `;
+    
+    return await this.run(sql, [recurringId]);
+  }
+
+  // Cancel recurring lesson
+  async cancelRecurringLesson(recurringId) {
+    const sql = `
+      UPDATE recurring_lessons 
+      SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `;
+    
+    return await this.run(sql, [recurringId]);
+  }
+
+  // Delete recurring slot (teacher deletes unbooked slot)
+  async deleteRecurringSlot(recurringId) {
+    const sql = 'DELETE FROM recurring_lessons WHERE id = ? AND student_id IS NULL';
+    return await this.run(sql, [recurringId]);
+  }
+
+  // Calculate next lesson date based on frequency
+  calculateNextLessonDate(currentDate, dayOfWeek, frequency) {
+    const date = new Date(currentDate);
+    
+    switch (frequency) {
+      case 'weekly':
+        date.setDate(date.getDate() + 7);
+        break;
+      case 'biweekly':
+        date.setDate(date.getDate() + 14);
+        break;
+      case 'monthly':
+        date.setMonth(date.getMonth() + 1);
+        break;
+      default:
+        date.setDate(date.getDate() + 7);
+    }
+    
+    return date.toISOString().split('T')[0];
+  }
+
+  // Get recurring lesson revenue for admin dashboard
+  async getRecurringLessonRevenue() {
+    const sql = `
+      SELECT 
+        SUM(p.platform_fee) as total_revenue,
+        COUNT(*) as total_lessons
+      FROM payments p
+      WHERE p.recurring_lesson_id IS NOT NULL
+      AND p.status = 'completed'
+    `;
+    
+    return await this.get(sql);
   }
 }
 
